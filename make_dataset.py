@@ -39,6 +39,7 @@ with open(f"{root}/annotated/{image_id}/meta.json") as fp:
     print("Generating GT", image_id)
     for x in range(width):  # VERY VERY slow implementation of generating GT
         for y in range(height):
+            print(x, y)
             for z in range(depth):
                 ret[z][x][y] = line.distance(Point3D(x, y, z))  # IS WIDTH WIDTH and HEIGHT HEIGT (is indexing ok?)
 with open(f"{root}/annotated/{image_id}/GT.pickle", 'w') as fp:
