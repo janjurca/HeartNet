@@ -43,7 +43,7 @@ class GomezT1(Dataset):
                 m = interp1d([0, 360], [0, 1])
             self.data.append(
                 (
-                    torch.tensor([image.ct_scan[:90, :, :]]),
+                    torch.tensor([image.ct_scan[:90, :320, :320]]),
                     torch.tensor([float(m(X_ANGLE)), float(m(Y_ANGLE)), float(m(Z_ANGLE))]),
                 )
             )
