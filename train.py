@@ -100,7 +100,7 @@ def main():
     trainLoader = DataLoader(trainSet, batch_size=batch_size, shuffle=True)
     print("loading test set")
     testSet = GomezT1(root=args.dataset,  portion=-0.25)
-    testLoader = DataLoader(testSet, batch_size=batch_size, shuffle=False)
+    testLoader = DataLoader(testSet, batch_size=1, shuffle=False)
 
     if args.opt == 'sgd':
         optimizer = optim.SGD(model.parameters(), lr=1e-1, momentum=0.99, weight_decay=weight_decay)
