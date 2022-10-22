@@ -19,7 +19,7 @@ from scipy.interpolate import interp1d
 class GomezT1(Dataset):
     def __init__(self, root, portion=0.75):
         self.data = []
-        files = glob.glob(f"{root}/original/a*/image.mhd")
+        files = glob.glob(f"{root}/original/*/image.mhd")
         if portion > 0:
             files = files[:int(portion*len(files))]
         else:
@@ -47,6 +47,7 @@ class GomezT1(Dataset):
                     torch.tensor([float(m(X_ANGLE)), float(m(Y_ANGLE)), float(m(Z_ANGLE))]),
                 )
             )
+        print("Dataset len: ", len(self.data))
 
     def __getitem__(self, index):
         return self.data[index]
