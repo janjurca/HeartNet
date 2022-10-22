@@ -14,7 +14,7 @@ TMPDIR=$(pwd)/temp
 export TMPDIR
 wget https://bootstrap.pypa.io/get-pip.py
 python3.9 get-pip.py
-python3.9 -m pip install sklearn  matplotlib  datasets numpy regex wget 
+python3.9 -m pip install sklearn  matplotlib  numpy regex wget 
 python3.9 -m pip install torch torchvision SimpleITK sympy scipy --cache-dir $(pwd)/cache --root $(pwd) -I
 export PYTHONPATH=$(pwd)/usr/local/lib/python3.9/dist-packages/:$PYTHONPATH
 

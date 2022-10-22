@@ -9,7 +9,6 @@ from itkImage import ItkImage
 import glob
 import os
 import json
-import simpy
 from sympy import Point3D
 from sympy.geometry import Line3D, Segment3D
 import math
