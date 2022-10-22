@@ -205,11 +205,12 @@ class VNetEncoder(nn.Module):
         self.down_tr32 = DownTransition(16, 1, elu)
         self.down_tr64 = DownTransition(32, 2, elu)
         self.down_tr128 = DownTransition(64, 3, elu, dropout=True)
-        self.down_tr256 = DownTransition(128, 2, elu, dropout=True, kernel_size=4, stride=4)
-        self.down_tr512 = DownTransition(256, 1, elu, dropout=True, kernel_size=3, stride=3)
+        self.down_tr256 = DownTransition(128, 2, elu, dropout=True, kernel_size=2, stride=2)
+        self.down_tr512 = DownTransition(256, 1, elu, dropout=True, kernel_size=2, stride=2)
         self.output = nn.Sequential(
+            nn.MaxPool3d(5, 5),
             nn.Flatten(1, -1),
-            nn.Linear(4608, 3),
+            nn.Linear(4096, 3),
             nn.Sigmoid()
         )
 
@@ -220,7 +221,5 @@ class VNetEncoder(nn.Module):
         out = self.down_tr64(out)
         out = self.down_tr128(out)
         out = self.down_tr256(out)
-        out = self.down_tr512(out)
         out = self.output(out)
-        # print(out.size())
         return out
