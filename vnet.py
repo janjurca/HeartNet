@@ -58,7 +58,7 @@ class InputTransition(nn.Module):
         self.relu1 = ELUCons(elu, 16)
 
     def forward(self, x):
-        print("InputTransition", x.size())
+        #print("InputTransition", x.size())
         # do we want a PRELU here as well?
         out = self.conv1(x)
         out = self.bn1(out)
@@ -71,10 +71,10 @@ class InputTransition(nn.Module):
 
 
 class DownTransition(nn.Module):
-    def __init__(self, inChans, nConvs, elu, dropout=False):
+    def __init__(self, inChans, nConvs, elu, dropout=False, stride=2, kernel_size=2):
         super(DownTransition, self).__init__()
         outChans = 2*inChans
-        self.down_conv = nn.Conv3d(inChans, outChans, kernel_size=2, stride=2)
+        self.down_conv = nn.Conv3d(inChans, outChans, kernel_size=kernel_size, stride=stride)
         self.bn1 = ContBatchNorm3d(outChans)
         self.do1 = passthrough
         self.relu1 = ELUCons(elu, outChans)
@@ -84,12 +84,12 @@ class DownTransition(nn.Module):
         self.ops = _make_nConv(outChans, nConvs, elu)
 
     def forward(self, x):
-        print("DownTransition", x.size())
+        #print("DownTransition", x.size())
         down = self.relu1(self.bn1(self.down_conv(x)))
         out = self.do1(down)
         out = self.ops(out)
         out = self.relu2(torch.add(out, down))
-        print(" -> DownTransition", out.size())
+        #print(" -> DownTransition", out.size())
         return out
 
 
@@ -107,18 +107,18 @@ class UpTransition(nn.Module):
         self.ops = _make_nConv(outChans, nConvs, elu)
 
     def forward(self, x, skipx):
-        print("UpTransition", x.size(), skipx.size())
+        #print("UpTransition", x.size(), skipx.size())
         out = self.do1(x)
         skipxdo = self.do2(skipx)
-        print(" -> UpTransition skipxdo", skipxdo.size())
+        #print(" -> UpTransition skipxdo", skipxdo.size())
         out = self.up_conv(out)
-        print(" -> UpTransition", out.size())
+        #print(" -> UpTransition", out.size())
         out = self.relu1(self.bn1(out))
-        print(" -> UpTransition", out.size())
+        #print(" -> UpTransition", out.size())
         xcat = torch.cat((out, skipxdo), 1)
         out = self.ops(xcat)
         out = self.relu2(torch.add(out, xcat))
-        print(" -> UpTransition", out.size())
+        #print(" -> UpTransition", out.size())
         return out
 
 
@@ -135,7 +135,7 @@ class OutputTransition(nn.Module):
             self.softmax = F.softmax
 
     def forward(self, x):
-        print("DownTransition", x.size())
+        #print("DownTransition", x.size())
         # convolve 32 down to 2 channels
         out = self.relu1(self.bn1(self.conv1(x)))
         out = self.conv2(out)
@@ -182,7 +182,7 @@ class VNet(nn.Module):
     #     self.up_tr32 = UpTransition(32, 1)
     #     self.out_tr = OutputTransition(16)
     def forward(self, x):
-        print(x.size())
+        # print(x.size())
         out16 = self.in_tr(x)
         out32 = self.down_tr32(out16)
         out64 = self.down_tr64(out32)
@@ -193,4 +193,34 @@ class VNet(nn.Module):
         out = self.up_tr64(out, out32)
         out = self.up_tr32(out, out16)
         out = self.out_tr(out)
+        return out
+
+
+class VNetEncoder(nn.Module):
+    # the number of convolutions in each layer corresponds
+    # to what is in the actual prototxt, not the intent
+    def __init__(self, elu=True, nll=False):
+        super().__init__()
+        self.in_tr = InputTransition(16, elu)
+        self.down_tr32 = DownTransition(16, 1, elu)
+        self.down_tr64 = DownTransition(32, 2, elu)
+        self.down_tr128 = DownTransition(64, 3, elu, dropout=True)
+        self.down_tr256 = DownTransition(128, 2, elu, dropout=True, kernel_size=4, stride=4)
+        self.down_tr512 = DownTransition(256, 1, elu, dropout=True, kernel_size=3, stride=3)
+        self.output = nn.Sequential(
+            nn.Flatten(1, -1),
+            nn.Linear(4608, 3),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        # print(x.size())
+        out = self.in_tr(x)
+        out = self.down_tr32(out)
+        out = self.down_tr64(out)
+        out = self.down_tr128(out)
+        out = self.down_tr256(out)
+        out = self.down_tr512(out)
+        out = self.output(out)
+        # print(out.size())
         return out

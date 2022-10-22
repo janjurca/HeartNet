@@ -15,7 +15,6 @@ import os
 import shutil
 import vnet
 from datasets import GomezT1
-import vnetone
 
 
 def weights_init(m):
@@ -30,12 +29,10 @@ def datestr():
     return '{}{:02}{:02}_{:02}{:02}'.format(now.tm_year, now.tm_mon, now.tm_mday, now.tm_hour, now.tm_min)
 
 
-def save_checkpoint(state, is_best, path, prefix, filename='checkpoint.pth.tar'):
+def save_checkpoint(state, path, prefix, filename='checkpoint.pth.tar'):
     prefix_save = os.path.join(path, prefix)
     name = prefix_save + '_' + filename
     torch.save(state, name)
-    if is_best:
-        shutil.copyfile(name, prefix_save + '_model_best.pth.tar')
 
 
 def main():
@@ -68,7 +65,7 @@ def main():
         torch.cuda.manual_seed(args.seed)
 
     print("build vnet")
-    model = vnet.VNet(elu=False, nll=True)
+    model = vnet.VNetEncoder(elu=False, nll=True)
     batch_size = args.batchSz
 
     if args.resume:
@@ -117,66 +114,48 @@ def main():
     for epoch in range(1, args.nEpochs + 1):
         adjust_opt(args.opt, optimizer, epoch)
         train(args, epoch, model, trainLoader, optimizer)
-        err = test(args, epoch, model, testLoader)
-        is_best = False
-        if err < best_prec1:
-            is_best = True
-            best_prec1 = err
+        test(args, epoch, model, testLoader)
         save_checkpoint({'epoch': epoch,
-                         'state_dict': model.state_dict(),
-                         'best_prec1': best_prec1},
-                        is_best, args.save, "vnet")
-        os.system('./plot.py {} {} &'.format(len(trainLoader), args.save))
+                         'state_dict': model.state_dict()}, args.save, "vnet")
 
 
 def train(args, epoch, model, trainLoader, optimizer):
     model.train()
     nProcessed = 0
     nTrain = len(trainLoader.dataset)
+    loss_function = nn.L1Loss()
     for batch_idx, (data, target) in enumerate(trainLoader):
         if args.cuda:
             data, target = data.cuda(), target.cuda()
         optimizer.zero_grad()
         output = model(data)
-        target = target.view(target.numel())
-        loss = F.nll_loss(output, target)
-        # make_graph.save('/tmp/t.dot', loss.creator); assert(False)
+
+        loss = loss_function(output, target)
+
         loss.backward()
         optimizer.step()
         nProcessed += len(data)
-        pred = output.data.max(1)[1]  # get the index of the max log-probability
-        incorrect = pred.ne(target.data).cpu().sum()
-        err = 100.*incorrect/target.numel()
         partialEpoch = epoch + batch_idx / len(trainLoader) - 1
-        print('Train Epoch: {:.2f} [{}/{} ({:.0f}%)]\tLoss: {:.4f}\tError: {:.3f}\t '.format(
+        print('Train Epoch: {:.2f} [{}/{} ({:.0f}%)]\tLoss: {:.4f}\t '.format(
             partialEpoch, nProcessed, nTrain, 100. * batch_idx / len(trainLoader),
-            loss.data[0], err, ))
+            loss.item()))
 
 
 def test(args, epoch, model, testLoader):
     model.eval()
     test_loss = 0
-    dice_loss = 0
-    incorrect = 0
-    numel = 0
+    loss_function = nn.L1Loss()
     for data, target in testLoader:
         if args.cuda:
             data, target = data.cuda(), target.cuda()
-        data, target = Variable(data, volatile=True), Variable(target)
-        target = target.view(target.numel())
-        numel += target.numel()
+        #data, target = Variable(data, volatile=True), Variable(target)
+
         output = model(data)
-        test_loss += F.nll_loss(output, target).data[0]
-        pred = output.data.max(1)[1]  # get the index of the max log-probability
-        incorrect += pred.ne(target.data).cpu().sum()
+        test_loss += loss_function(output, target).item()
 
     test_loss /= len(testLoader)  # loss function already averages over batch size
-    dice_loss /= len(testLoader)
-    err = 100.*incorrect/numel
-    print('\nTest set: Average loss: {:.4f}, Error: {}/{} ({:.3f}%) Dice: {:.6f}\n'.format(
-        test_loss, incorrect, numel, err, dice_loss))
-
-    return err
+    print('\nTest set: Average loss: {:.4f},\n'.format(test_loss))
+    return test_loss
 
 
 def adjust_opt(optAlg, optimizer, epoch):
