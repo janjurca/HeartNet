@@ -38,7 +38,6 @@ def save_checkpoint(state, path, prefix, filename='checkpoint.pth.tar'):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--batchSz', type=int, default=1)
-    parser.add_argument('--dice', action='store_true')
     parser.add_argument('--dataset', action='store', help="destination of dataset")
 
     parser.add_argument('--nEpochs', type=int, default=300)
@@ -96,13 +95,12 @@ def main():
     normSigma = [459.512]
     normTransform = transforms.Normalize(normMu, normSigma)
 
-    kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
     print("loading training set")
     trainSet = GomezT1(root=args.dataset, portion=0.75)
-    trainLoader = DataLoader(trainSet, batch_size=batch_size, shuffle=True, **kwargs)
+    trainLoader = DataLoader(trainSet, batch_size=batch_size, shuffle=True)
     print("loading test set")
     testSet = GomezT1(root=args.dataset,  portion=-0.25)
-    testLoader = DataLoader(testSet, batch_size=batch_size, shuffle=False, **kwargs)
+    testLoader = DataLoader(testSet, batch_size=batch_size, shuffle=False)
 
     if args.opt == 'sgd':
         optimizer = optim.SGD(model.parameters(), lr=1e-1, momentum=0.99, weight_decay=weight_decay)
