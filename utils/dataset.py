@@ -38,9 +38,9 @@ class GomezT1(Dataset):
                 mapper_depth = interp1d([1, 0], [0, depth])
 
                 gt[
-                    int(mapper_width(loaded_meta["front"])):int(mapper_width(loaded_meta["back"])),
-                    int(mapper_height(loaded_meta["top"])):int(mapper_height(loaded_meta["botom"])),
                     int(mapper_depth(loaded_meta["left"])):int(mapper_depth(loaded_meta["right"])),
+                    int(mapper_height(loaded_meta["top"])):int(mapper_height(loaded_meta["botom"])),
+                    int(mapper_width(loaded_meta["front"])):int(mapper_width(loaded_meta["back"])),
                 ] = 1
                 # {"t": 0.24149697580645135, "b": 0.6303679435483871, "l": 0.9960937499999998, "r": 0.18440020161290316, "f": 0.3065776209677419}
 
@@ -50,7 +50,7 @@ class GomezT1(Dataset):
                     torch.tensor(gt, dtype=int)
                 )
             )
-            print(self.data[-1][0].size(), self.data[-1][1].size())
+            self.images.append(image.image)
 
         print("Dataset len: ", len(self.data))
 
@@ -59,3 +59,6 @@ class GomezT1(Dataset):
 
     def __len__(self):
         return len(self.data)
+
+    def get(self, index):
+        return self.data[index], self.images[index]
