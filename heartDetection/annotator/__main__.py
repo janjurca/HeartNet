@@ -40,9 +40,6 @@ class ItkImage:
 
     def load(self) -> None:
         self.image = sitk.ReadImage(self.filename, imageIO="MetaImageIO")  # TODO generalize for other formats
-        self.refresh()
-
-    def refresh(self) -> None:
 
         original_CT = self.image
         dimension = original_CT.GetDimension()
@@ -71,13 +68,16 @@ class ItkImage:
         img_center = np.array(original_CT.TransformContinuousIndexToPhysicalPoint(np.array(original_CT.GetSize())/2.0))
         centering_transform.SetOffset(np.array(transform.GetInverse().TransformPoint(img_center) - reference_center))
         centered_transform = sitk.Transform(transform)
-        centered_transform = sitk.CompositeTransform([centered_transform, centering_transform])
-        # sitk.Show(sitk.Resample(original_CT, reference_image, centered_transform, sitk.sitkLinear, 0.0))
+        centered_transform = sitk.CompositeTransform([centered_transform])
 
         resampled_img = sitk.Resample(original_CT, reference_image, centered_transform, sitk.sitkLinear, 0.0)
 
         self.image = resampled_img
+        self.image.SetSpacing([1, 1, 1])
 
+        self.refresh()
+
+    def refresh(self) -> None:
         self.ct_scan = sitk.GetArrayFromImage(self.image)
         self.origin = np.array(list(reversed(self.image.GetOrigin())))  # TODO handle different rotations
         self.spacing = np.array(list(reversed(self.image.GetSpacing())))
@@ -125,6 +125,7 @@ class ItkImage:
         theta_z = np.deg2rad(theta_z)
         euler_transform = sitk.Euler3DTransform(self.get_center(), theta_x, theta_y, theta_z, (0, 0, 0))
         self.image = self.resample(euler_transform)
+
         self.refresh()
 
 
@@ -246,12 +247,12 @@ for f in glob.glob(args.input):
 
         with open(f"{target_dir}/position.json", 'w') as fp:
             data = {
-                "t": top,
-                "b": bottom,
-                "l": left,
-                "r": right,
-                "f": front,
-                "b": back,
+                "top": top,
+                "botom": bottom,
+                "left": left,
+                "right": right,
+                "front": front,
+                "back": back,
             }
             print(data)
             json.dump(data, fp)

@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader, Dataset
 import numpy as np
 import torch.utils.data
 import random
-from itkImage import ItkImage
+from utils.itkImage import ItkImage
 import glob
 import os
 import json
@@ -16,36 +16,42 @@ from scipy.interpolate import interp1d
 
 
 class GomezT1(Dataset):
-    def __init__(self, root, portion=0.75):
+    def __init__(self, root, portion=0.75, resolution=None):
         self.data = []
+        self.images = []
         files = glob.glob(f"{root}/original/*/image.mhd")
         if portion > 0:
             files = files[:int(portion*len(files))]
         else:
             files = files[int((1+portion)*len(files)):]
         for file in files:
-            image = ItkImage(file)
-            width, height, depth = image.resolution()
+            image = ItkImage(file, resolution=resolution)
+            width, height, depth = image.image.GetSize()
             image_id = file.split(os.sep)[-2]
+            gt = np.zeros((width, height, depth))
 
-            with open(f"{root}/annotated/{image_id}/meta.json") as fp:
+            with open(f"{root}/positions/{image_id}/position.json") as fp:
                 loaded_meta = json.load(fp)
 
-                zeroPoint = Point3D(0, 0, 0)
-                SA_AXIS = Line3D(
-                    Point3D(loaded_meta["SA"]["A"]["x"], loaded_meta["SA"]["A"]["y"], loaded_meta["SA"]["A"]["z"]),
-                    Point3D(loaded_meta["SA"]["B"]["x"], loaded_meta["SA"]["B"]["y"], loaded_meta["SA"]["B"]["z"]),
-                )
-                X_ANGLE = math.degrees(float(SA_AXIS.angle_between(Line3D(zeroPoint, Point3D(1, 0, 0)))))
-                Y_ANGLE = math.degrees(float(SA_AXIS.angle_between(Line3D(zeroPoint, Point3D(0, 1, 0)))))
-                Z_ANGLE = math.degrees(float(SA_AXIS.angle_between(Line3D(zeroPoint, Point3D(0, 0, 1)))))
-                m = interp1d([0, 360], [0, 1])
+                mapper_width = interp1d([0, 1], [0, width])
+                mapper_height = interp1d([0, 1], [0, height])
+                mapper_depth = interp1d([1, 0], [0, depth])
+
+                gt[
+                    int(mapper_width(loaded_meta["front"])):int(mapper_width(loaded_meta["back"])),
+                    int(mapper_height(loaded_meta["top"])):int(mapper_height(loaded_meta["botom"])),
+                    int(mapper_depth(loaded_meta["left"])):int(mapper_depth(loaded_meta["right"])),
+                ] = 1
+                # {"t": 0.24149697580645135, "b": 0.6303679435483871, "l": 0.9960937499999998, "r": 0.18440020161290316, "f": 0.3065776209677419}
+
             self.data.append(
                 (
-                    torch.tensor([image.ct_scan[:90, :320, :320]]),
-                    torch.tensor([float(m(X_ANGLE)), float(m(Y_ANGLE)), float(m(Z_ANGLE))]),
+                    torch.tensor([image.ct_scan]),
+                    torch.tensor(gt, dtype=int)
                 )
             )
+            print(self.data[-1][0].size(), self.data[-1][1].size())
+
         print("Dataset len: ", len(self.data))
 
     def __getitem__(self, index):

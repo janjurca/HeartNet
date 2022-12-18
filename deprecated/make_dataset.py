@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader, Dataset
 import numpy as np
 import torch.utils.data
 import random
-from itkImage import ItkImage
+from utils.itkImage import ItkImage
 import glob
 import os
 import json
