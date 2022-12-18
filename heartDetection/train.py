@@ -42,6 +42,7 @@ def datestr():
 def save_checkpoint(state, is_best, path, prefix, filename='checkpoint.pth.tar'):
     prefix_save = os.path.join(path, prefix)
     name = prefix_save + '_' + filename
+    print("Saving:", name)
     torch.save(state, name)
     if is_best:
         shutil.copyfile(name, prefix_save + '_model_best.pth.tar')
@@ -70,7 +71,6 @@ def main():
     if args.dice:
         nll = False
     weight_decay = args.weight_decay
-    setproctitle.setproctitle(args.save)
 
     torch.manual_seed(args.seed)
     if args.cuda:
@@ -168,7 +168,7 @@ def train_nll(args, epoch, model, trainLoader, optimizer, trainF):
         incorrect = pred.ne(target.data).cpu().sum()
         err = 100.*incorrect/target.numel()
         partialEpoch = epoch + batch_idx / len(trainLoader) - 1
-        print('Train Epoch: {:.2f} [{}/{} ({:.0f}%)]\tLoss: {:.4f}\tError: {:.3f}\n'.format(
+        print('Train Epoch: {:.2f} [{}/{} ({:.0f}%)]\tLoss: {:.4f}\tError: {:.3f}'.format(
             partialEpoch, nProcessed, nTrain, 100. * batch_idx / len(trainLoader),
             loss.item(), err,))
 
