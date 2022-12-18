@@ -209,6 +209,7 @@ args = parser.parse_args()
 top, bottom, left, right, front, back = None, None, None, None, None, None
 
 for f in glob.glob(args.input):
+    print(f)
     fig, (Side, Front) = plt.subplots(1, 2)
 
     target_dir = f'{args.output}/{"/".join(f.split(os.sep)[-3:-1])}'

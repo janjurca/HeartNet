@@ -68,5 +68,42 @@ class ItkImage:
         # Read the spacing along each dimension
         self.spacing = np.array(list(reversed(self.image.GetSpacing())))
 
-    def resolution(self):
-        return (self.image.GetWidth(), self.image.GetHeight(), self.image.GetDepth())
+    def resample(self, transform):
+        """
+        This function resamples (updates) an image using a specified transform
+        :param image: The sitk image we are trying to transform
+        :param transform: An sitk transform (ex. resizing, rotation, etc.
+        :return: The transformed sitk image
+        """
+        reference_image = self.image
+        interpolator = sitk.sitkBSpline
+        default_value = 0
+        return sitk.Resample(self.image, reference_image, transform,
+                             interpolator, default_value)
+
+    def get_center(self):
+        """
+        This function returns the physical center point of a 3d sitk image
+        :param img: The sitk image we are trying to find the center of
+        :return: The physical center point of the image
+        """
+        width, height, depth = self.image.GetSize()
+        p = self.image.TransformIndexToPhysicalPoint((int(np.ceil(width/2)),
+                                                     int(np.ceil(height/2)),
+                                                     int(np.ceil(depth/2))))
+        return p
+
+    def rotation3d(self, theta_x, theta_y, theta_z):
+        self.load()
+        theta_x = np.deg2rad(theta_x)
+        theta_y = np.deg2rad(theta_y)
+        theta_z = np.deg2rad(theta_z)
+        euler_transform = sitk.Euler3DTransform(self.get_center(), theta_x, theta_y, theta_z, (0, 0, 0))
+        self.image = self.resample(euler_transform)
+        self.refresh()
+
+    def translate(self, x, y, z):
+        self.load()
+        transform = sitk.TranslationTransform(3, (x, y, z))
+        self.image = self.resample(transform)
+        self.refresh()

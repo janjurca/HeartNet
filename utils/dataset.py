@@ -13,6 +13,7 @@ from sympy import Point3D
 from sympy.geometry import Line3D, Segment3D
 import math
 from scipy.interpolate import interp1d
+import SimpleITK as sitk
 
 
 class GomezT1(Dataset):

@@ -28,6 +28,30 @@ import operator
 import SimpleITK as sitk
 import matplotlib.pyplot as plt
 
+fig, (original, mask) = None, (None, None)
+
+
+class VolumeImage:
+    def __init__(self, image, ax, title="Nic") -> None:
+        global fig, original, mask
+        self.image = image
+        self.data = sitk.GetArrayFromImage(self.image)
+        self.ax = ax
+        self.index = int(len(self.data)/2)
+        self.ax_data = self.ax.imshow(self.data[self.index])
+
+        def onScroll(event):
+            if event.button == "up":
+                self.index += 1
+            if event.button == "down":
+                self.index -= 1
+            self.index = 0 if self.index < 0 else (len(self.data) - 1 if self.index > len(self.data) else self.index)
+            self.ax.set_title(f"Slice: {self.index}")
+            self.ax_data.set_data(self.data[self.index])
+            fig.canvas.draw_idle()
+
+        fig.canvas.mpl_connect('scroll_event', onScroll)
+
 
 def weights_init(m):
     classname = m.__class__.__name__
@@ -51,6 +75,7 @@ def save_checkpoint(state, is_best, path, prefix, filename='checkpoint.pth.tar')
 
 
 def main():
+    global fig, original, mask
     parser = argparse.ArgumentParser()
     parser.add_argument('--batchSz', type=int, default=1)
     parser.add_argument('--dataset', default='./Gomez_T1', type=str, help='Dataset Path')
@@ -100,16 +125,17 @@ def main():
         output = output.cpu()
         print(output.size(), data.size())
         output = output.detach().numpy().squeeze()
-        for x, _ in enumerate(output):
-            for y, _ in enumerate(output[x]):
-                for z, _ in enumerate(output[x][y]):
-                    output[x][y][z] = output[x][y][z] if output[x][y][z] == 0 else 1
         output = np.array(output, dtype=float)
         img = sitk.GetImageFromArray(output)
         img.SetOrigin(image.GetOrigin())
-        sitk.WriteImage(img, args.output+'/image.mhd')
-        sitk.Show(img, title="grid using Show function")
-        sitk.Show(image, title="grid using Show function")
+        #sitk.WriteImage(img, args.output+'/image.mhd')
+        #sitk.Show(img, title="grid using Show function")
+        #sitk.Show(image, title="grid using Show function")
+
+        fig, (original, mask) = plt.subplots(1, 2)
+        VolumeImage(image, original)
+        VolumeImage(img, mask)
+        plt.show()
 
 
 if __name__ == '__main__':
