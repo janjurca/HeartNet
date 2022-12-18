@@ -59,7 +59,7 @@ class GomezT1(Dataset):
             self.images.append(image)
 
         if augment:
-            self.augment()
+            self.data.extend(self.augment())
         print("Dataset len: ", len(self.data))
 
     def __getitem__(self, index):
