@@ -23,6 +23,7 @@ import setproctitle
 
 from nets.vnet import VNet
 from utils.dataset import GomezT1
+from utils.boundingBox import getBoundingBox
 from functools import reduce
 import operator
 import SimpleITK as sitk
@@ -113,7 +114,6 @@ def main():
     model.eval()
     for i in range(len(inferenceSet)):
         (data, target), image = inferenceSet.get(i)
-        print(data.size())
         shape = data.size()
         if args.cuda:
             data, target = data.cuda(), target.cuda()
@@ -123,9 +123,10 @@ def main():
 
         output = output.view(shape)
         output = output.cpu()
-        print(output.size(), data.size())
         output = output.detach().numpy().squeeze()
+        print(getBoundingBox(output))
         output = np.array(output, dtype=float)
+
         img = sitk.GetImageFromArray(output)
         img.SetOrigin(image.image.GetOrigin())
         #sitk.WriteImage(img, args.output+'/image.mhd')

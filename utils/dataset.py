@@ -44,6 +44,7 @@ class GomezT1(Dataset):
                     int(mapper_width(loaded_meta["front"])), int(mapper_width(loaded_meta["back"])),
                 )
 
+                image.translate(30, 30, 30)
                 gt[
                     int(mapper_depth(loaded_meta["left"])):int(mapper_depth(loaded_meta["right"])),
                     int(mapper_height(loaded_meta["top"])):int(mapper_height(loaded_meta["botom"])),
