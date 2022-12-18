@@ -1,2 +1,4 @@
 *.pyc
 work/*
+.vscode
+Gomez_T1
