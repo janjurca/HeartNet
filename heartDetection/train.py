@@ -256,9 +256,9 @@ def adjust_opt(optAlg, optimizer, epoch):
     if optAlg == 'sgd':
         if epoch < 5:
             lr = 1e-1
-        elif epoch == 10:
+        elif epoch == 20:
             lr = 1e-2
-        elif epoch == 15:
+        elif epoch == 30:
             lr = 1e-3
         else:
             return
