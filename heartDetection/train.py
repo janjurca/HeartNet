@@ -254,11 +254,11 @@ def test_dice(args, epoch, model, testLoader, optimizer, testF):
 
 def adjust_opt(optAlg, optimizer, epoch):
     if optAlg == 'sgd':
-        if epoch < 150:
+        if epoch < 5:
             lr = 1e-1
-        elif epoch == 150:
+        elif epoch == 10:
             lr = 1e-2
-        elif epoch == 225:
+        elif epoch == 15:
             lr = 1e-3
         else:
             return
