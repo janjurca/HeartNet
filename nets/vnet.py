@@ -176,13 +176,8 @@ class VNet(nn.Module):
         out128 = self.down_tr128(out64)
         out256 = self.down_tr256(out128)
         out = self.up_tr256(out256, out128)
-        print(out.size())
         out = self.up_tr128(out, out64)
-        print(out.size())
         out = self.up_tr64(out, out32)
-        print(out.size())
         out = self.up_tr32(out, out16)
-        print(out.size())
         out = self.out_tr(out)
-        print("LAST", out.size())
         return out
