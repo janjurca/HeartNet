@@ -21,4 +21,6 @@ export PYTHONPATH=$(pwd)/usr/local/lib/python3.9/dist-packages/:$PYTHONPATH
 cd /storage/brno2/home/xjurca08/storage/brno2/home/xjurca08/HeartNet
 git pull
 
-python3.9 train.py --dataset /storage/brno2/home/xjurca08/storage/brno2/home/xjurca08/Gomez_T1/ --batchSz 4
+#python3.9 train.py --dataset /storage/brno2/home/xjurca08/storage/brno2/home/xjurca08/Gomez_T1/ --batchSz 4
+
+python3.9 detection.py --dataset /storage/brno2/home/xjurca08/storage/brno2/home/xjurca08/HeartNet/Gomez_T1/ --batchSz 10

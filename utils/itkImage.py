@@ -107,16 +107,16 @@ class ItkImage:
         h = self.heartBox
         self.load()
         self.heartBox = h
-        transform = sitk.TranslationTransform(3, (x, y, z))
+        transform = sitk.TranslationTransform(3, (-x, -y, -z))
         self.image = self.resample(transform)
         self.refresh()
         if self.heartBox:
-            self.heartBox["left"] = self.heartBox["left"] + z
-            self.heartBox["right"] = self.heartBox["right"] + z
-            self.heartBox["top"] = self.heartBox["top"] + y
-            self.heartBox["bottom"] = self.heartBox["bottom"] + y
-            self.heartBox["front"] = self.heartBox["front"] + x
-            self.heartBox["back"] = self.heartBox["back"] + x
+            self.heartBox["left"] += z
+            self.heartBox["right"] += z
+            self.heartBox["top"] += y
+            self.heartBox["bottom"] += y
+            self.heartBox["front"] += x
+            self.heartBox["back"] += x
 
     def setHeartBox(self, left, right, top, bottom, front, back):
         self.heartBox = {}
