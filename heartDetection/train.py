@@ -19,7 +19,6 @@ import math
 
 import shutil
 
-import setproctitle
 
 from nets.vnet import VNet
 from utils.dataset import GomezT1
