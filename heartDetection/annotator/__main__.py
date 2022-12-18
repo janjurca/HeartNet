@@ -13,6 +13,8 @@ import json
 from scipy.spatial.transform import Rotation as R
 from sympy import Point3D
 from sympy.geometry import Line3D
+from matplotlib.widgets import RectangleSelector
+import matplotlib.patches as patches
 
 fig, (Side, Front) = None, (None, None)
 selected_axis = None
@@ -41,6 +43,41 @@ class ItkImage:
         self.refresh()
 
     def refresh(self) -> None:
+
+        original_CT = self.image
+        dimension = original_CT.GetDimension()
+        reference_physical_size = np.zeros(original_CT.GetDimension())
+        reference_physical_size[:] = [(sz-1)*spc if sz*spc > mx else mx for sz, spc, mx in zip(original_CT.GetSize(), original_CT.GetSpacing(), reference_physical_size)]
+
+        reference_origin = original_CT.GetOrigin()
+        reference_direction = original_CT.GetDirection()
+
+        reference_size = [128, 128, 128]
+        reference_spacing = [phys_sz/(sz-1) for sz, phys_sz in zip(reference_size, reference_physical_size)]
+
+        reference_image = sitk.Image(reference_size, original_CT.GetPixelIDValue())
+        reference_image.SetOrigin(reference_origin)
+        reference_image.SetSpacing(reference_spacing)
+        reference_image.SetDirection(reference_direction)
+
+        reference_center = np.array(reference_image.TransformContinuousIndexToPhysicalPoint(np.array(reference_image.GetSize())/2.0))
+
+        transform = sitk.AffineTransform(dimension)
+        transform.SetMatrix(original_CT.GetDirection())
+
+        transform.SetTranslation(np.array(original_CT.GetOrigin()) - reference_origin)
+
+        centering_transform = sitk.TranslationTransform(dimension)
+        img_center = np.array(original_CT.TransformContinuousIndexToPhysicalPoint(np.array(original_CT.GetSize())/2.0))
+        centering_transform.SetOffset(np.array(transform.GetInverse().TransformPoint(img_center) - reference_center))
+        centered_transform = sitk.Transform(transform)
+        centered_transform = sitk.CompositeTransform([centered_transform, centering_transform])
+        # sitk.Show(sitk.Resample(original_CT, reference_image, centered_transform, sitk.sitkLinear, 0.0))
+
+        resampled_img = sitk.Resample(original_CT, reference_image, centered_transform, sitk.sitkLinear, 0.0)
+
+        self.image = resampled_img
+
         self.ct_scan = sitk.GetArrayFromImage(self.image)
         self.origin = np.array(list(reversed(self.image.GetOrigin())))  # TODO handle different rotations
         self.spacing = np.array(list(reversed(self.image.GetSpacing())))
@@ -55,11 +92,9 @@ class ItkImage:
         :param transform: An sitk transform (ex. resizing, rotation, etc.
         :return: The transformed sitk image
         """
-        reference_image = self.image
         interpolator = sitk.sitkBSpline
         default_value = 0
-        return sitk.Resample(self.image, reference_image, transform,
-                             interpolator, default_value)
+        return sitk.Resample(self.image, transform, interpolator, default_value)
 
     def get_center(self):
         """
@@ -119,65 +154,37 @@ class VolumeImage:
         self.fig.canvas.draw_idle()
 
 
-class PlotPlaneSelect(VolumeImage):
-    def __init__(self, image: ItkImage, ax, onSetPlane=None, title="PlaneSelect") -> None:
+class PlotBoundingBox(VolumeImage):
+    def __init__(self, image: ItkImage, ax, onSetBoundingBoxFunc=None, title="BoundingBox") -> None:
         self.image = image
         self.fig = fig
         self.ax = ax
         self.index = int(len(self.image.ct_scan)/2)
-        self.plane = None
+        self.boundingbox = None
         self.patch = None
-        self.onSetPlane = onSetPlane
-        self.ax_data = self.ax.imshow(self.image.ct_scan[self.index], cmap='gray')
+        self.onSetBoundingBoxFunc = onSetBoundingBoxFunc
+        self.ax_data = self.ax.imshow(self.image.ct_scan[self.index])
         self.eventSetup()
 
-        self.selectedLine = (None, None)
-        self.pressed = False
-
-        def onButtonPress(event):
-            if selected_axis is not self.ax:
-                return
-
-            self.pressed = True
-            self.selectedLine = ((event.xdata, event.ydata), None)
-
-        def onButtonRelease(event):
-            if selected_axis is not self.ax:
-                return
-
-            self.pressed = False
-            self.selectedLine = (self.selectedLine[0], (event.xdata, event.ydata))
-            ((x1, y1), (x2, y2)) = self.selectedLine
-            if x1 > x2:
-                x1, y1, x2, y2 = x2, y2, x1, y1
-            self.selectedLine = ((x1, y1), (x2, y2))
-
-            if self.onSetPlane:
-                self.onSetPlane(self)
-
-        def onMouseMove(event):
-            if selected_axis is not self.ax:
-                return
-
-            if not self.pressed:
-                return
-            self.selectedLine = (self.selectedLine[0], (event.xdata, event.ydata))
+        def areaSelect(click, release):
+            self.boundingbox = ((click.xdata, click.ydata), (release.xdata, release.ydata))
             if self.patch:
                 self.patch.remove()
                 self.patch = None
+            self.patch = self.ax.add_patch(
+                patches.Rectangle(
+                    self.boundingbox[0],
+                    self.boundingbox[1][0] - self.boundingbox[0][0],
+                    self.boundingbox[1][1] - self.boundingbox[0][1],
+                    linewidth=1, edgecolor='r', facecolor='none'))
+            if self.onSetBoundingBoxFunc:
+                self.onSetBoundingBoxFunc(self)
 
-            x, y = ((self.selectedLine[0][0], self.selectedLine[1][0]), (self.selectedLine[0][1], self.selectedLine[1][1]))
-            self.patch = mlines.Line2D(x, y, lw=2, color='red', alpha=1)
-            self.ax.add_line(self.patch)
-            self.fig.canvas.draw_idle()
-
-        self.fig.canvas.mpl_connect('button_press_event', onButtonPress)
-        self.fig.canvas.mpl_connect('motion_notify_event', onMouseMove)
-        self.fig.canvas.mpl_connect('button_release_event', onButtonRelease)
+        self.rect_selector = RectangleSelector(self.ax, areaSelect, button=[1])
 
 
-def ComputeBoundaries(plot: PlotPlaneSelect):
-    ((x1, y1, _), (x2, y2, _)) = plot.selectedLine
+def ComputeBoundaries(plot: PlotBoundingBox):
+    ((x1, y1), (x2, y2)) = plot.boundingbox
     if x1 > x2:
         x1, y1, x2, y2 = x2, y2, x1, y1
 
@@ -214,19 +221,23 @@ for f in glob.glob(args.input):
 
     plotSide, plotFront = None, None,
 
-    def onFrontSelected(plot: PlotPlaneSelect):
-        left, _, right, _ = ComputeBoundaries(plot)
+    def onFrontSelected(plot: PlotBoundingBox):
+        global top, bottom, left, right, front, back
+        right, _, left, _ = ComputeBoundaries(plot)
+        print("t:", top, "b:", bottom, "l:", left, "r:", right, "f:", front, "b:", back,)
 
-    def onSideSelected(plot: PlotPlaneSelect):
-        back, top, front, bottom = ComputeBoundaries(plot)
+    def onSideSelected(plot: PlotBoundingBox):
+        global top, bottom, left, right, front, back
+        front, top, back, bottom = ComputeBoundaries(plot)
+        print("t:", top, "b:", bottom, "l:", left, "r:", right, "f:", front, "b:", back,)
 
     imageFront = ItkImage(f)
     imageFront.rotation3d(0, 90, 0)
 
     imageSide = ItkImage(f)
 
-    plotFront = PlotPlaneSelect(imageFront, Front, onSetPlane=onFrontSelected)
-    plotSide = PlotPlaneSelect(imageSide, Side, onSetPlane=onSideSelected)
+    plotFront = PlotBoundingBox(imageFront, Front, onSetBoundingBoxFunc=onFrontSelected)
+    plotSide = PlotBoundingBox(imageSide, Side, onSetBoundingBoxFunc=onSideSelected)
 
     def nextFile(event):
         global target_dir, top, bottom, left, right, front, back
@@ -235,12 +246,12 @@ for f in glob.glob(args.input):
 
         with open(f"{target_dir}/position.json", 'w') as fp:
             data = {
-                "top": top,
-                "bottom": bottom,
-                "left": left,
-                "right": right,
-                "front": front,
-                "back": back,
+                "t": top,
+                "b": bottom,
+                "l": left,
+                "r": right,
+                "f": front,
+                "b": back,
             }
             print(data)
             json.dump(data, fp)
