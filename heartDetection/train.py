@@ -114,10 +114,10 @@ def main():
     kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 
     print("loading training set")
-    trainSet = GomezT1(root=args.dataset, portion=0.75, resolution=[128, 128, 128])
+    trainSet = GomezT1(root=args.dataset, portion=0.75, resolution=[128, 128, 128], augment=True)
     trainLoader = DataLoader(trainSet, batch_size=batch_size, shuffle=True, **kwargs)
     print("loading test set")
-    testSet = GomezT1(root=args.dataset,  portion=-0.25, resolution=[128, 128, 128])
+    testSet = GomezT1(root=args.dataset,  portion=-0.25, resolution=[128, 128, 128], augment=True)
     testLoader = DataLoader(testSet, batch_size=1, shuffle=False, **kwargs)
 
     if args.opt == 'sgd':

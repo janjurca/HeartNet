@@ -127,13 +127,13 @@ def main():
         output = output.detach().numpy().squeeze()
         output = np.array(output, dtype=float)
         img = sitk.GetImageFromArray(output)
-        img.SetOrigin(image.GetOrigin())
+        img.SetOrigin(image.image.GetOrigin())
         #sitk.WriteImage(img, args.output+'/image.mhd')
         #sitk.Show(img, title="grid using Show function")
         #sitk.Show(image, title="grid using Show function")
 
         fig, (original, mask) = plt.subplots(1, 2)
-        VolumeImage(image, original)
+        VolumeImage(image.image, original)
         VolumeImage(img, mask)
         plt.show()
 

@@ -8,6 +8,7 @@ class ItkImage:
         self.resolution = resolution
         self.augment_mhd_file()
         self.load()
+        self.heartBox = {}
 
     def augment_mhd_file(self):
         new_content = ""
@@ -57,7 +58,7 @@ class ItkImage:
 
             self.image = resampled_img
         self.image.SetSpacing([1, 1, 1])
-
+        self.heartBox = None
         self.refresh()
 
     def refresh(self) -> None:
@@ -103,7 +104,25 @@ class ItkImage:
         self.refresh()
 
     def translate(self, x, y, z):
+        h = self.heartBox
         self.load()
+        self.heartBox = h
         transform = sitk.TranslationTransform(3, (x, y, z))
         self.image = self.resample(transform)
         self.refresh()
+        if self.heartBox:
+            self.heartBox["left"] = self.heartBox["left"] + z
+            self.heartBox["right"] = self.heartBox["right"] + z
+            self.heartBox["top"] = self.heartBox["top"] + y
+            self.heartBox["bottom"] = self.heartBox["bottom"] + y
+            self.heartBox["front"] = self.heartBox["front"] + x
+            self.heartBox["back"] = self.heartBox["back"] + x
+
+    def setHeartBox(self, left, right, top, bottom, front, back):
+        self.heartBox = {}
+        self.heartBox["left"] = left
+        self.heartBox["right"] = right
+        self.heartBox["top"] = top
+        self.heartBox["bottom"] = bottom
+        self.heartBox["front"] = front
+        self.heartBox["back"] = back
