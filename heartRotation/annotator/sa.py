@@ -71,13 +71,14 @@ for f in glob.glob(args.input):
 
     target_dir = f'{args.output}/{"/".join(f.split("/")[-3:-1])}'
     axnext = glvars.fig.add_axes([0.81, 0.05, 0.1, 0.075])
+    axgenerate = glvars.fig.add_axes([0.6, 0.05, 0.1, 0.075])
     SA_AXIS = None
 
     def enter_axes(event):
         glvars.selected_axis = event.inaxes
     glvars.fig.canvas.mpl_connect('axes_enter_event', enter_axes)
 
-    plotHLA, plotVLA, plotSAview, plotGT, plotCH4, plotCH2, plotGTCH4, plotGTCH2 = None, None, None, None, None, None, None, None
+    plotHLA, plotVLA, plotSA, plotGT, plotCH4, plotCH2, plotGTCH4, plotGTCH2 = None, None, None, None, None, None, None, None
 
     def on4CHSelected(plot: PlotPlaneSelect):
         ((x0, y0), (x1, y1)) = plotCH4.selectedLine
@@ -104,9 +105,9 @@ for f in glob.glob(args.input):
         Y_ANGLE = -(math.degrees(float(SAViewPlane.angle_between(YAxis))) - 90)
         Z_ANGLE = -(math.degrees(float(SAViewPlane.angle_between(ZAxis))) - 90)
 
-        plotSAview.image.rotation3d(0, Y_ANGLE,  -(180 - X_ANGLE))
-        plotSAview.setIndex(int(50))
-        plotSAview.redraw()
+        plotSA.image.rotation3d(0, Y_ANGLE,  -(180 - X_ANGLE))
+        plotSA.setIndex(int(50))
+        plotSA.redraw()
 
     def onHLASelected(plot: PlotPlaneSelect):
         plotVLA.image.rotation3d(0,  180-ComputeLineAngle(plot), 0)
@@ -149,7 +150,8 @@ for f in glob.glob(args.input):
         ((x0, y0), (x1, y1)) = plotVLA.selectedLine
         line = Line2D(Point2D(x0, y0), Point2D(x1, y1))
         x_angle = math.degrees(float(line.angle_between(Line2D(Point2D(0, 0), Point2D(1, 0)))))
-        for transform in reversed(plotHLA.image.transforms):
+        plotCH4.image.load()
+        for transform in plotHLA.image.transforms:
             plotCH4.image.applyTransform(transform, commit=False)
         plotCH4.image.rotation3d(x_angle, 0, 0, reload=False)
 
@@ -160,19 +162,58 @@ for f in glob.glob(args.input):
 
     plotHLA = PlotPlaneSelect(imageHLA, HLAax, onSetPlane=onHLASelected)
     plotVLA = PlotPlaneSelect(ItkImage(f, name="VLA"), VLAax, onSetPlane=onVLASelected)
-    plotSAview = PlotPlaneSelect(ItkImage(f, name="SAView"), SAview)
+    plotSA = PlotPlaneSelect(ItkImage(f, name="SAView"), SAview)
     plotGT = PlotPlaneSelect(ItkImage(f, name="GTSA"), GTax)
     plotCH4 = PlotPlaneSelect(ItkImage(f, name="CH4"), CH4ax, onSetPlane=on4CHSelected)
     plotCH2 = PlotPlaneSelect(ItkImage(f, name="CH2"), CH2ax)
     plotGTCH4 = PlotPlaneSelect(ItkImage(f, name="GTCH4"), GTCH4ax)
     plotGTCH2 = PlotPlaneSelect(ItkImage(f, name="GTCH2"), GTCH2ax)
 
+    def generate(event):
+        # GTSA
+        z = plotSA.index
+        gtSA = np.zeros((100, 320, 320), dtype=float)
+        gtSA[z:z+2, :, :] = 1
+        plotGT.image.setData(gtSA)
+        plotGT.image.applyTransform(sitk.CompositeTransform(plotSA.image.transforms).GetInverse())
+        plotGT.image.refresh()
+        plotGT.redraw()
+
+        # GT4CH
+        z = plotCH4.index
+        gt4CH = np.zeros((100, 320, 320), dtype=float)
+        gt4CH[z:z+2, :, :] = 1
+        plotGTCH4.image.setData(gt4CH)
+        plotGTCH4.image.applyTransform(sitk.CompositeTransform(plotCH4.image.transforms).GetInverse())
+        plotGTCH4.image.refresh()
+        plotGTCH4.redraw()
+
+        # GT4CH
+        z = plotCH2.index
+        gt2CH = np.zeros((100, 320, 320), dtype=float)
+        gt2CH[z:z+2, :, :] = 1
+        plotGTCH2.image.setData(gt2CH)
+        plotGTCH2.image.applyTransform(sitk.CompositeTransform(plotCH2.image.transforms).GetInverse())
+        plotGTCH2.image.refresh()
+        plotGTCH2.redraw()
+
     def nextFile(event):
         global target_dir
         os.makedirs(target_dir, exist_ok=True)
+        generate(None)
+        sitk.WriteImage(plotGT.image.image, target_dir + '/gtsa.mhd')
+        sitk.WriteImage(plotGTCH4.image.image, target_dir + '/gtch4.mhd')
+        sitk.WriteImage(plotGTCH2.image.image, target_dir + '/gtch2.mhd')
+
+        sitk.Show(plotGT.image.image, title="SA")
+        sitk.Show(plotGTCH4.image.image, title="ch4")
+        sitk.Show(plotGTCH2.image.image, title="ch2")
+
         plt.close()
 
     bnext = Button(axnext, 'Save and next')
     bnext.on_clicked(nextFile)
+    bgenerate = Button(axgenerate, 'Generate')
+    bgenerate.on_clicked(generate)
 
     plt.show()
