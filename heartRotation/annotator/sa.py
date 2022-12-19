@@ -12,8 +12,8 @@ from scipy.spatial.transform import Rotation as R
 from sympy import Point, Line
 from sympy.solvers import solve
 from sympy import Symbol
-from sympy import Point3D, Plane
-from sympy.geometry import Line3D
+from sympy import Point3D, Plane, Point2D
+from sympy.geometry import Line3D, Line2D
 from utils import PlotPlaneSelect, ItkImage
 from gl import glvars, gllines
 from matplotlib.widgets import Slider, Button, RadioButtons
@@ -55,8 +55,11 @@ for f in glob.glob(args.input):
     HLAax = glvars.fig.add_subplot(2, 4, 1)
     VLAax = glvars.fig.add_subplot(2, 4, 2)
     SAview = glvars.fig.add_subplot(2, 4, 3)
-    GTax = glvars.fig.add_subplot(2, 4, 4)
-    Originalax = glvars.fig.add_subplot(2, 4, 5)
+    CH4ax = glvars.fig.add_subplot(2, 4, 4)
+    CH2ax = glvars.fig.add_subplot(2, 4, 5)
+    GTax = glvars.fig.add_subplot(2, 4, 6)
+    GTCH4ax = glvars.fig.add_subplot(2, 4, 7)
+    GTCH2ax = glvars.fig.add_subplot(2, 4, 8)
 
     # PlaneView = glvars.fig.add_subplot(3, 3, 4, projection='3d')
     # PlaneView.set_xlabel('X')
@@ -70,23 +73,18 @@ for f in glob.glob(args.input):
     axnext = glvars.fig.add_axes([0.81, 0.05, 0.1, 0.075])
     SA_AXIS = None
 
-    axHeight = glvars.fig.add_axes([0.25, 0.1, 0.4, 0.03])
-
     def enter_axes(event):
         glvars.selected_axis = event.inaxes
     glvars.fig.canvas.mpl_connect('axes_enter_event', enter_axes)
 
-    plotHLA, plotVLA, plotSAview, plotGT = None, None, None, None
+    plotHLA, plotVLA, plotSAview, plotGT, plotCH4, plotCH2, plotGTCH4, plotGTCH2 = None, None, None, None, None, None, None, None
 
-    def onSASelected(plot: PlotPlaneSelect):
-        ((x0, y0), (x1, y1)) = plotSAview.selectedLine
-        z0 = plotSAview.index
-        gt = np.zeros((100, 320, 320), dtype=float)
-        gt[z0:z0+10, :, :] = 255
-        plotGT.image.setData(gt)
-        for transform in reversed(plotSAview.image.transforms):
-            plotGT.image.image = plotGT.image.resample(transform.GetInverse())
-            plotGT.image.refresh()
+    def on4CHSelected(plot: PlotPlaneSelect):
+        ((x0, y0), (x1, y1)) = plotCH4.selectedLine
+        line = Line2D(Point2D(x0, y0), Point2D(x1, y1))
+        x_angle = math.degrees(float(line.angle_between(Line2D(Point2D(0, 0), Point2D(1, 0)))))
+        plotCH2.image.rotation3d(0,  180-x_angle, 0)
+        plotCH2.redraw()
 
     def showSAview():
         global SA_AXIS
@@ -107,18 +105,12 @@ for f in glob.glob(args.input):
         Z_ANGLE = -(math.degrees(float(SAViewPlane.angle_between(ZAxis))) - 90)
 
         plotSAview.image.rotation3d(0, Y_ANGLE,  -(180 - X_ANGLE))
-        plotSAview.setIndex(int(glvars.height*100))
+        plotSAview.setIndex(int(50))
         plotSAview.redraw()
-
-        glvars.center_point = Ypoint
-        glvars.plane = SAViewPlane
-        glvars.SA_AXIS = SA_AXIS
 
     def onHLASelected(plot: PlotPlaneSelect):
         plotVLA.image.rotation3d(0,  180-ComputeLineAngle(plot), 0)
         plotVLA.redraw()
-        plotVLAview.image.rotation3d(0,  180-ComputeLineAngle(plot), 0)
-        plotVLAview.redraw()
 
     def onVLASelected(plot: PlotPlaneSelect):
         global SA_AXIS
@@ -135,7 +127,6 @@ for f in glob.glob(args.input):
         y = Symbol('y')
         z0 = 1 - float(solve(a*(1-y0) + b*y + c, y)[0])
         z1 = 1 - float(solve(a*(1-y1) + b*y + c, y)[0])
-        print()
         print("Before:", (x0, y0, z0), (x1, y1, z1))
         print("Before coords:", mapper_rev((x0, y0)), mapper100_rev(z0), mapper_rev((x1, y1)), mapper100_rev(z1))
         x0, y0, z0, x1, y1, z1 = x0 - 0.5, y0 - 0.5, z0 - 0.5, x1 - 0.5, y1 - 0.5, z1 - 0.5
@@ -154,14 +145,27 @@ for f in glob.glob(args.input):
         SA_AXIS = Line3D((x0, y0, z0), (x1, y1, z1))
         showSAview()
 
+        # SHOW 4CH
+        ((x0, y0), (x1, y1)) = plotVLA.selectedLine
+        line = Line2D(Point2D(x0, y0), Point2D(x1, y1))
+        x_angle = math.degrees(float(line.angle_between(Line2D(Point2D(0, 0), Point2D(1, 0)))))
+        for transform in reversed(plotHLA.image.transforms):
+            plotCH4.image.applyTransform(transform, commit=False)
+        plotCH4.image.rotation3d(x_angle, 0, 0, reload=False)
+
+        plotCH4.redraw()
+
     imageHLA = ItkImage(f, name="PseudoHLA")
     imageHLA.rotation3d(0, 90, 270)
 
     plotHLA = PlotPlaneSelect(imageHLA, HLAax, onSetPlane=onHLASelected)
     plotVLA = PlotPlaneSelect(ItkImage(f, name="VLA"), VLAax, onSetPlane=onVLASelected)
-    plotSAview = PlotPlaneSelect(ItkImage(f, name="SAView"), SAview, onSetPlane=onSASelected)
-    plotGT = PlotPlaneSelect(ItkImage(f, name="GT"), GTax)
-    PlotPlaneSelect(ItkImage(f, name="Original"), Originalax)
+    plotSAview = PlotPlaneSelect(ItkImage(f, name="SAView"), SAview)
+    plotGT = PlotPlaneSelect(ItkImage(f, name="GTSA"), GTax)
+    plotCH4 = PlotPlaneSelect(ItkImage(f, name="CH4"), CH4ax, onSetPlane=on4CHSelected)
+    plotCH2 = PlotPlaneSelect(ItkImage(f, name="CH2"), CH2ax)
+    plotGTCH4 = PlotPlaneSelect(ItkImage(f, name="GTCH4"), GTCH4ax)
+    plotGTCH2 = PlotPlaneSelect(ItkImage(f, name="GTCH2"), GTCH2ax)
 
     def nextFile(event):
         global target_dir
@@ -170,18 +174,5 @@ for f in glob.glob(args.input):
 
     bnext = Button(axnext, 'Save and next')
     bnext.on_clicked(nextFile)
-
-    freq_slider = Slider(
-        ax=axHeight,
-        label='Height',
-        valmin=0,
-        valmax=1,
-        valinit=0.5,
-    )
-
-    def update(x):
-        glvars.height = x
-        showSAview()
-    freq_slider.on_changed(update)
 
     plt.show()
