@@ -11,6 +11,12 @@ class ItkImage:
         self.filename = filename
         self.augment_mhd_file()
         self.load()
+        self.transforms = []
+
+    def clone(self):
+        im = ItkImage(self.filename, self.name + "clone")
+        for transform in self.transforms:
+            im.applyTransform(transform)
 
     def augment_mhd_file(self):
         new_content = ""
@@ -27,6 +33,7 @@ class ItkImage:
     def load(self) -> None:
         self.image = sitk.ReadImage(self.filename, imageIO="MetaImageIO")  # TODO generalize for other formats
         gllines.clearRotation(self.name)
+        self.transforms = []
         self.refresh()
 
     def refresh(self) -> None:
@@ -79,15 +86,24 @@ class ItkImage:
         """
         if reload:
             self.load()
-        print("before rotation", self.image.GetSize())
         gllines.addRotation(self.name, theta_x, theta_y, theta_z)
         theta_x = np.deg2rad(theta_x)
         theta_y = np.deg2rad(theta_y)
         theta_z = np.deg2rad(theta_z)
         euler_transform = sitk.Euler3DTransform(self.get_center(), theta_x, theta_y, theta_z, (0, 0, 0))
-        self.image = self.resample(euler_transform)
-        print("after rotation", self.image.GetSize())
+        self.applyTransform(euler_transform)
 
+    def applyTransform(self, transform):
+        self.transforms.append(transform)
+        self.image = self.resample(transform)
+        self.refresh()
+
+    def setData(self, data):
+        im = sitk.GetImageFromArray(data)
+        im.SetDirection(self.image.GetDirection())
+        im.SetOrigin(self.image.GetOrigin())
+        im.SetSpacing(self.image.GetSpacing())
+        self.image = im
         self.refresh()
 
 
