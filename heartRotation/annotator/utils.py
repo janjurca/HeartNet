@@ -1,12 +1,13 @@
 import SimpleITK as sitk
 import numpy as np
 import matplotlib.lines as mlines
-
-from gl import glvars
+from sympy import Point3D, Point2D
+from gl import glvars, gllines
 
 
 class ItkImage:
-    def __init__(self, filename: str) -> None:
+    def __init__(self, filename: str, name) -> None:
+        self.name = name
         self.filename = filename
         self.augment_mhd_file()
         self.load()
@@ -25,6 +26,7 @@ class ItkImage:
 
     def load(self) -> None:
         self.image = sitk.ReadImage(self.filename, imageIO="MetaImageIO")  # TODO generalize for other formats
+        gllines.clearRotation(self.name)
         self.refresh()
 
     def refresh(self) -> None:
@@ -64,7 +66,7 @@ class ItkImage:
         print("center", p)
         return p
 
-    def rotation3d(self, theta_x, theta_y, theta_z):
+    def rotation3d(self, theta_x, theta_y, theta_z, reload=True):
         """
         This function rotates an image across each of the x, y, z axes by theta_x, theta_y, and theta_z degrees
         respectively
@@ -75,12 +77,17 @@ class ItkImage:
         :param show: Boolean, whether or not the user wants to see the result of the rotation
         :return: The rotated image
         """
-        self.load()
+        if reload:
+            self.load()
+        print("before rotation", self.image.GetSize())
+        gllines.addRotation(self.name, theta_x, theta_y, theta_z)
         theta_x = np.deg2rad(theta_x)
         theta_y = np.deg2rad(theta_y)
         theta_z = np.deg2rad(theta_z)
         euler_transform = sitk.Euler3DTransform(self.get_center(), theta_x, theta_y, theta_z, (0, 0, 0))
         self.image = self.resample(euler_transform)
+        print("after rotation", self.image.GetSize())
+
         self.refresh()
 
 
@@ -96,9 +103,9 @@ class VolumeImage:
             if event.button == "down":
                 self.index -= 1
             self.index = 0 if self.index < 0 else (len(self.image.ct_scan) - 1 if self.index > len(self.image.ct_scan) else self.index)
-            self.ax.set_title(f"Slice: {self.index}")
-            self.ax_data.set_data(self.image.ct_scan[self.index])
-            glvars.fig.canvas.draw_idle()
+            self.redraw()
+            if self.onScroll:
+                self.onScroll(self)
 
         glvars.fig.canvas.mpl_connect('scroll_event', onScroll)
 
@@ -106,12 +113,15 @@ class VolumeImage:
         self.index = index
 
     def redraw(self):
+        self.ax.set_title(f"{self.title} | {self.index}")
         self.ax_data.set_data(self.image.ct_scan[self.index])
         glvars.fig.canvas.draw_idle()
 
 
 class PlotPlaneSelect(VolumeImage):
-    def __init__(self, image: ItkImage, ax, onSetPlane=None, title="PlaneSelect") -> None:
+    def __init__(self, image: ItkImage, ax, onSetPlane=None, onScroll=None) -> None:
+        self.onScroll = onScroll
+        self.title = image.name
         self.image = image
         self.ax = ax
         self.index = int(len(self.image.ct_scan)/2)
@@ -120,6 +130,7 @@ class PlotPlaneSelect(VolumeImage):
         self.onSetPlane = onSetPlane
         self.ax_data = self.ax.imshow(self.image.ct_scan[self.index], cmap='gray')
         self.eventSetup()
+        self.ax.set_title(f"{self.title} | {self.index}")
 
         self.selectedLine = (None, None)
         self.pressed = False
@@ -141,7 +152,7 @@ class PlotPlaneSelect(VolumeImage):
             if x1 > x2:
                 x1, y1, x2, y2 = x2, y2, x1, y1
             self.selectedLine = ((x1, y1), (x2, y2))
-
+            gllines.setPoints(self.title, Point2D(x1, y1), Point2D(x2, y2))
             if self.onSetPlane:
                 self.onSetPlane(self)
 
