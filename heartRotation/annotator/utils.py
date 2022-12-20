@@ -58,8 +58,7 @@ class ItkImage:
         reference_image = self.image
         interpolator = sitk.sitkBSpline
         default_value = 0
-        return sitk.Resample(self.image, reference_image, transform,
-                             interpolator, default_value)
+        return sitk.Resample(self.image, reference_image, transform,   interpolator, default_value, useNearestNeighborExtrapolator=True)
 
     def get_center(self):
         """

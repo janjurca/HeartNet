@@ -152,6 +152,7 @@ def train_nll(args, epoch, model, trainLoader, optimizer, trainF):
     model.train()
     nProcessed = 0
     nTrain = len(trainLoader.dataset)
+    lossFunction = torch.nn.MSELoss()
     for batch_idx, (data, target) in enumerate(trainLoader):
         if args.cuda:
             data, target = data.cuda(), target.cuda()
@@ -159,7 +160,7 @@ def train_nll(args, epoch, model, trainLoader, optimizer, trainF):
         optimizer.zero_grad()
         output = model(data)
         target = target.view(target.numel())
-        loss = F.nll_loss(output, target)
+        loss = lossFunction(output, target)
         # make_graph.save('/tmp/t.dot', loss.creator); assert(False)
         loss.backward()
         optimizer.step()
@@ -182,6 +183,7 @@ def test_nll(args, epoch, model, testLoader, optimizer, testF):
     dice_loss = 0
     incorrect = 0
     numel = 0
+    lossFunction = torch.nn.MSELoss()
     for data, target in testLoader:
         if args.cuda:
             data, target = data.cuda(), target.cuda()
@@ -189,7 +191,7 @@ def test_nll(args, epoch, model, testLoader, optimizer, testF):
         target = target.view(target.numel())
         numel += target.numel()
         output = model(data)
-        test_loss += F.nll_loss(output, target).item()
+        test_loss += lossFunction(output, target).item()
         pred = output.data.max(1)[1]  # get the index of the max log-probability
         incorrect += pred.ne(target.data).cpu().sum()
 
@@ -198,55 +200,6 @@ def test_nll(args, epoch, model, testLoader, optimizer, testF):
     err = 100.*incorrect/numel
     print('Test set: Average loss: {:.4f}, Error: {}/{} ({:.3f}%)\n'.format(
         test_loss, incorrect, numel, err))
-
-    testF.write('{},{},{}\n'.format(epoch, test_loss, err))
-    testF.flush()
-    return err
-
-
-def train_dice(args, epoch, model, trainLoader, optimizer, trainF):
-    model.train()
-    nProcessed = 0
-    nTrain = len(trainLoader.dataset)
-    for batch_idx, (data, target) in enumerate(trainLoader):
-        if args.cuda:
-            data, target = data.cuda(), target.cuda()
-        data, target = Variable(data), Variable(target)
-        optimizer.zero_grad()
-        output = model(data)
-        loss = bioloss.dice_loss(output, target)
-        # make_graph.save('/tmp/t.dot', loss.creator); assert(False)
-        loss.backward()
-        optimizer.step()
-        nProcessed += len(data)
-        err = 100.*(1. - loss.item())
-        partialEpoch = epoch + batch_idx / len(trainLoader) - 1
-        print('Train Epoch: {:.2f} [{}/{} ({:.0f}%)]\tLoss: {:.8f}\tError: {:.8f}\n'.format(
-            partialEpoch, nProcessed, nTrain, 100. * batch_idx / len(trainLoader),
-            loss.item(), err))
-
-        trainF.write('{},{},{}\n'.format(partialEpoch, loss.item(), err))
-        trainF.flush()
-
-
-def test_dice(args, epoch, model, testLoader, optimizer, testF):
-    model.eval()
-    test_loss = 0
-    incorrect = 0
-    for data, target in testLoader:
-        if args.cuda:
-            data, target = data.cuda(), target.cuda()
-        data, target = Variable(data, volatile=True), Variable(target)
-        output = model(data)
-        loss = bioloss.dice_loss(output, target).data[0]
-        test_loss += loss
-        incorrect += (1. - loss)
-
-    test_loss /= len(testLoader)  # loss function already averages over batch size
-    nTotal = len(testLoader)
-    err = 100.*incorrect/nTotal
-    print('Test set: Average Dice Coeff: {:.4f}, Error: {}/{} ({:.0f}%)\n'.format(
-        test_loss, incorrect, nTotal, err))
 
     testF.write('{},{},{}\n'.format(epoch, test_loss, err))
     testF.flush()

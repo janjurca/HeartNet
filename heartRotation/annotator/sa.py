@@ -169,12 +169,24 @@ for f in glob.glob(args.input):
     plotGTCH4 = PlotPlaneSelect(ItkImage(f, name="GTCH4"), GTCH4ax)
     plotGTCH2 = PlotPlaneSelect(ItkImage(f, name="GTCH2"), GTCH2ax)
 
+    def computeValueByDistance(distance, length):
+        mapper = interp1d([0, length], [0, 5])  # Tanh scale is defined here
+        transformed_distance = mapper(distance)
+        value = 1 - np.tanh(transformed_distance)
+        return value
+
+    def generateDistanceMap(index, shape):
+        (depth, height, width) = shape
+        gt = np.zeros((depth, height, width), dtype=float)
+        for i in range(depth):
+            gt[i:i+1, :, :] = computeValueByDistance(abs(index-i), depth)
+        return gt
+
     def generate(event):
         # GTSA
         z = plotSA.index
         width, height, depth = plotSA.image.resolution()
-        gtSA = np.zeros((depth, height, width), dtype=float)
-        gtSA[z:z+2, :, :] = 1
+        gtSA = generateDistanceMap(z, (depth, height, width))
         plotGT.image.setData(gtSA)
         plotGT.image.applyTransform(sitk.CompositeTransform(plotSA.image.transforms).GetInverse())
         plotGT.image.refresh()
@@ -183,8 +195,7 @@ for f in glob.glob(args.input):
         # GT4CH
         z = plotCH4.index
         width, height, depth = plotCH4.image.resolution()
-        gt4CH = np.zeros((depth, height, width), dtype=float)
-        gt4CH[z:z+2, :, :] = 1
+        gt4CH = generateDistanceMap(z, (depth, height, width))
         plotGTCH4.image.setData(gt4CH)
         plotGTCH4.image.applyTransform(sitk.CompositeTransform(plotCH4.image.transforms).GetInverse())
         plotGTCH4.image.refresh()
@@ -193,8 +204,7 @@ for f in glob.glob(args.input):
         # GT4CH
         z = plotCH2.index
         width, height, depth = plotCH2.image.resolution()
-        gt2CH = np.zeros((depth, height, width), dtype=float)
-        gt2CH[z:z+2, :, :] = 1
+        gt2CH = generateDistanceMap(z, (depth, height, width))
         plotGTCH2.image.setData(gt2CH)
         plotGTCH2.image.applyTransform(sitk.CompositeTransform(plotCH2.image.transforms).GetInverse())
         plotGTCH2.image.refresh()
@@ -207,6 +217,9 @@ for f in glob.glob(args.input):
         sitk.WriteImage(plotGT.image.image, target_dir + '/gtsa.mhd')
         sitk.WriteImage(plotGTCH4.image.image, target_dir + '/gtch4.mhd')
         sitk.WriteImage(plotGTCH2.image.image, target_dir + '/gtch2.mhd')
+
+        sitk.Show(plotSA.image.image, title="SA")
+        sitk.Show(plotGT.image.image, title="gt")
 
         plt.close()
 

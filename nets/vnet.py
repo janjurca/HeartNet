@@ -137,6 +137,29 @@ class OutputTransition(nn.Module):
         return out
 
 
+class OutputTransitionRegression(nn.Module):
+    def __init__(self, inChans, elu, nll):
+        super(OutputTransition, self).__init__()
+        self.conv1 = nn.Conv3d(inChans, 2, kernel_size=5, padding=2)
+        self.bn1 = ContBatchNorm3d(2)
+        self.conv2 = nn.Conv3d(2, 1, kernel_size=1)
+        self.relu1 = ELUCons(elu, 1)
+        self.regression = nn.Sigmoid()
+
+    def forward(self, x):
+        # convolve 32 down to 2 channels
+        out = self.relu1(self.bn1(self.conv1(x)))
+        out = self.conv2(out)
+
+        # make channels the last axis
+        out = out.permute(0, 2, 3, 4, 1).contiguous()
+        # flatten
+        out = out.view(out.numel() // 2, 2)
+        out = self.regression(out)
+        # treat channel 0 as the predicted output
+        return out
+
+
 class VNet(nn.Module):
     # the number of convolutions in each layer corresponds
     # to what is in the actual prototxt, not the intent
@@ -153,22 +176,6 @@ class VNet(nn.Module):
         self.up_tr32 = UpTransition(64, 32, 1, elu)
         self.out_tr = OutputTransition(32, elu, nll)
 
-    # The network topology as described in the diagram
-    # in the VNet paper
-    # def __init__(self):
-    #     super(VNet, self).__init__()
-    #     self.in_tr =  InputTransition(16)
-    #     # the number of convolutions in each layer corresponds
-    #     # to what is in the actual prototxt, not the intent
-    #     self.down_tr32 = DownTransition(16, 2)
-    #     self.down_tr64 = DownTransition(32, 3)
-    #     self.down_tr128 = DownTransition(64, 3)
-    #     self.down_tr256 = DownTransition(128, 3)
-    #     self.up_tr256 = UpTransition(256, 3)
-    #     self.up_tr128 = UpTransition(128, 3)
-    #     self.up_tr64 = UpTransition(64, 2)
-    #     self.up_tr32 = UpTransition(32, 1)
-    #     self.out_tr = OutputTransition(16)
     def forward(self, x):
         out16 = self.in_tr(x)
         out32 = self.down_tr32(out16)
@@ -181,3 +188,9 @@ class VNet(nn.Module):
         out = self.up_tr32(out, out16)
         out = self.out_tr(out)
         return out
+
+
+class VNetRegression(VNet):
+    def __init__(self, elu=True, nll=False):
+        super().__init__(elu=True, nll=False)
+        self.out_tr = OutputTransition(32, elu, nll)

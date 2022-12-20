@@ -163,7 +163,7 @@ class GomezT1Rotation(Dataset):
         return len(self.data)
 
     def get(self, index):
-        return self.data[index], self.images[index]
+        return self.data[index], self.images[index], self.gtsas[index]
 
     def duplicateImage(self, image):
         im = ItkImage(image.filename, resolution=self.resolution)
