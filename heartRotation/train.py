@@ -142,7 +142,7 @@ def main():
         save_checkpoint({'epoch': epoch,
                          'state_dict': model.state_dict(),
                          'best_prec1': best_prec1},
-                        is_best, args.save, "vnet")
+                        is_best, args.save, "rotation")
 
     trainF.close()
     testF.close()
