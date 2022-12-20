@@ -146,7 +146,7 @@ class GomezT1Rotation(Dataset):
             self.data.append(
                 (
                     torch.tensor([image.ct_scan]),
-                    torch.tensor(gtsa.ct_scan, dtype=int)
+                    torch.tensor(gtsa.ct_scan, dtype=torch.float32)
                 )
             )
             self.images.append(image)
@@ -197,7 +197,7 @@ class GomezT1Rotation(Dataset):
 
                 augmented.append((
                     torch.tensor([im.ct_scan]),
-                    torch.tensor(new_gtsa.ct_scan, dtype=int)
+                    torch.tensor(new_gtsa.ct_scan, dtype=torch.float32)
                 ))
 
         return augmented

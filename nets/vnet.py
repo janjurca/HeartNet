@@ -139,7 +139,7 @@ class OutputTransition(nn.Module):
 
 class OutputTransitionRegression(nn.Module):
     def __init__(self, inChans, elu, nll):
-        super(OutputTransition, self).__init__()
+        super(OutputTransitionRegression, self).__init__()
         self.conv1 = nn.Conv3d(inChans, 2, kernel_size=5, padding=2)
         self.bn1 = ContBatchNorm3d(2)
         self.conv2 = nn.Conv3d(2, 1, kernel_size=1)
@@ -154,7 +154,7 @@ class OutputTransitionRegression(nn.Module):
         # make channels the last axis
         out = out.permute(0, 2, 3, 4, 1).contiguous()
         # flatten
-        out = out.view(out.numel() // 2, 2)
+        out = out.view(out.numel())
         out = self.regression(out)
         # treat channel 0 as the predicted output
         return out
@@ -193,4 +193,4 @@ class VNet(nn.Module):
 class VNetRegression(VNet):
     def __init__(self, elu=True, nll=False):
         super().__init__(elu=True, nll=False)
-        self.out_tr = OutputTransition(32, elu, nll)
+        self.out_tr = OutputTransitionRegression(32, elu, nll)

@@ -170,7 +170,7 @@ for f in glob.glob(args.input):
     plotGTCH2 = PlotPlaneSelect(ItkImage(f, name="GTCH2"), GTCH2ax)
 
     def computeValueByDistance(distance, length):
-        mapper = interp1d([0, length], [0, 5])  # Tanh scale is defined here
+        mapper = interp1d([0, length], [0, 10])  # Tanh scale is defined here
         transformed_distance = mapper(distance)
         value = 1 - np.tanh(transformed_distance)
         return value
@@ -218,8 +218,8 @@ for f in glob.glob(args.input):
         sitk.WriteImage(plotGTCH4.image.image, target_dir + '/gtch4.mhd')
         sitk.WriteImage(plotGTCH2.image.image, target_dir + '/gtch2.mhd')
 
-        sitk.Show(plotSA.image.image, title="SA")
-        sitk.Show(plotGT.image.image, title="gt")
+        #sitk.Show(plotSA.image.image, title="SA")
+        #sitk.Show(plotGT.image.image, title="gt")
 
         plt.close()
 

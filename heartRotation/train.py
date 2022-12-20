@@ -20,7 +20,7 @@ import math
 import shutil
 
 
-from nets.vnet import VNet
+from nets.vnet import VNet, VNetRegression
 from utils.dataset import GomezT1Rotation
 from functools import reduce
 import operator
@@ -66,7 +66,7 @@ def main():
     args = parser.parse_args()
     best_prec1 = 100.
     args.cuda = not args.no_cuda and torch.cuda.is_available()
-    args.save = args.save or 'work/vnet.base.{}'.format(datestr())
+    args.save = args.save or 'work/rotation.base.{}'.format(datestr())
     nll = True
     if args.dice:
         nll = False
@@ -77,7 +77,7 @@ def main():
         torch.cuda.manual_seed(args.seed)
 
     print("build vnet")
-    model = VNet(elu=False, nll=nll)
+    model = VNetRegression(elu=False, nll=nll)
     batch_size = args.batchSz
 
     if args.resume:
@@ -165,15 +165,15 @@ def train_nll(args, epoch, model, trainLoader, optimizer, trainF):
         loss.backward()
         optimizer.step()
         nProcessed += len(data)
-        pred = output.data.max(1)[1]  # get the index of the max log-probability
-        incorrect = pred.ne(target.data).cpu().sum()
-        err = 100.*incorrect/target.numel()
+        # pred = output.data.max(1)[1]  # get the index of the max log-probability
+        #incorrect = pred.ne(target.data).cpu().sum()
+        #err = 100.*incorrect/target.numel()
         partialEpoch = epoch + batch_idx / len(trainLoader) - 1
-        print('Train Epoch: {:.2f} [{}/{} ({:.0f}%)]\tLoss: {:.4f}\tError: {:.3f}'.format(
+        print('Train Epoch: {:.2f} [{}/{} ({:.0f}%)]\tLoss: {:.4f}\t'.format(
             partialEpoch, nProcessed, nTrain, 100. * batch_idx / len(trainLoader),
-            loss.item(), err,))
+            loss.item(),))
 
-        trainF.write('{},{},{}\n'.format(partialEpoch, loss.item(), err))
+        trainF.write('{},{},{}\n'.format(partialEpoch, loss.item(), loss.item()))
         trainF.flush()
 
 
@@ -192,18 +192,17 @@ def test_nll(args, epoch, model, testLoader, optimizer, testF):
         numel += target.numel()
         output = model(data)
         test_loss += lossFunction(output, target).item()
-        pred = output.data.max(1)[1]  # get the index of the max log-probability
-        incorrect += pred.ne(target.data).cpu().sum()
+        # pred = output.data.max(1)[1]  # get the index of the max log-probability
+        #incorrect += pred.ne(target.data).cpu().sum()
 
     test_loss /= len(testLoader)  # loss function already averages over batch size
     dice_loss /= len(testLoader)
-    err = 100.*incorrect/numel
-    print('Test set: Average loss: {:.4f}, Error: {}/{} ({:.3f}%)\n'.format(
-        test_loss, incorrect, numel, err))
+    #err = 100.*incorrect/numel
+    print('Test set: Average loss: {:.4f}\n'.format(test_loss))
 
     testF.write('{},{},{}\n'.format(epoch, test_loss, err))
     testF.flush()
-    return err
+    return test_loss
 
 
 def adjust_opt(optAlg, optimizer, epoch):
