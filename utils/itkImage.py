@@ -9,6 +9,8 @@ class ItkImage:
         self.augment_mhd_file()
         self.load()
         self.heartBox = {}
+        self.transforms = []
+        self.todo_transforms = []
 
     def augment_mhd_file(self):
         new_content = ""
@@ -59,6 +61,7 @@ class ItkImage:
             self.image = resampled_img
         self.image.SetSpacing([1, 1, 1])
         self.heartBox = None
+        self.transforms = []
         self.refresh()
 
     def refresh(self) -> None:
@@ -94,22 +97,35 @@ class ItkImage:
                                                      int(np.ceil(depth/2))))
         return p
 
-    def rotation3d(self, theta_x, theta_y, theta_z):
-        self.load()
+    def rotation3d(self, theta_x, theta_y, theta_z, reload=True, commit=True):
+        if reload:
+            self.load()
         theta_x = np.deg2rad(theta_x)
         theta_y = np.deg2rad(theta_y)
         theta_z = np.deg2rad(theta_z)
         euler_transform = sitk.Euler3DTransform(self.get_center(), theta_x, theta_y, theta_z, (0, 0, 0))
-        self.image = self.resample(euler_transform)
-        self.refresh()
+        self.applyTransform(euler_transform, commit)
 
-    def translate(self, x, y, z):
+    def applyTransform(self, transform, commit=True):
+        self.todo_transforms.append(transform)
+        if commit:
+            self.commitTransform()
+            self.refresh()
+
+    def commitTransform(self):
+        self.image = self.resample(sitk.CompositeTransform(self.todo_transforms))
+        self.transforms.extend(self.todo_transforms)
+
+        self.todo_transforms = []
+
+    def translate(self, x, y, z, reload=True, commit=True):
         h = self.heartBox
-        self.load()
+        if reload:
+            self.load()
         self.heartBox = h
         transform = sitk.TranslationTransform(3, (-x, -y, -z))
-        self.image = self.resample(transform)
-        self.refresh()
+        self.applyTransform(transform, commit)
+
         if self.heartBox:
             self.heartBox["left"] += z
             self.heartBox["right"] += z

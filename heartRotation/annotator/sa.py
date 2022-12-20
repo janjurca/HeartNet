@@ -172,7 +172,8 @@ for f in glob.glob(args.input):
     def generate(event):
         # GTSA
         z = plotSA.index
-        gtSA = np.zeros((100, 320, 320), dtype=float)
+        width, height, depth = plotSA.image.resolution()
+        gtSA = np.zeros((depth, height, width), dtype=float)
         gtSA[z:z+2, :, :] = 1
         plotGT.image.setData(gtSA)
         plotGT.image.applyTransform(sitk.CompositeTransform(plotSA.image.transforms).GetInverse())
@@ -181,7 +182,8 @@ for f in glob.glob(args.input):
 
         # GT4CH
         z = plotCH4.index
-        gt4CH = np.zeros((100, 320, 320), dtype=float)
+        width, height, depth = plotCH4.image.resolution()
+        gt4CH = np.zeros((depth, height, width), dtype=float)
         gt4CH[z:z+2, :, :] = 1
         plotGTCH4.image.setData(gt4CH)
         plotGTCH4.image.applyTransform(sitk.CompositeTransform(plotCH4.image.transforms).GetInverse())
@@ -190,7 +192,8 @@ for f in glob.glob(args.input):
 
         # GT4CH
         z = plotCH2.index
-        gt2CH = np.zeros((100, 320, 320), dtype=float)
+        width, height, depth = plotCH2.image.resolution()
+        gt2CH = np.zeros((depth, height, width), dtype=float)
         gt2CH[z:z+2, :, :] = 1
         plotGTCH2.image.setData(gt2CH)
         plotGTCH2.image.applyTransform(sitk.CompositeTransform(plotCH2.image.transforms).GetInverse())
@@ -204,10 +207,6 @@ for f in glob.glob(args.input):
         sitk.WriteImage(plotGT.image.image, target_dir + '/gtsa.mhd')
         sitk.WriteImage(plotGTCH4.image.image, target_dir + '/gtch4.mhd')
         sitk.WriteImage(plotGTCH2.image.image, target_dir + '/gtch2.mhd')
-
-        sitk.Show(plotGT.image.image, title="SA")
-        sitk.Show(plotGTCH4.image.image, title="ch4")
-        sitk.Show(plotGTCH2.image.image, title="ch2")
 
         plt.close()
 
