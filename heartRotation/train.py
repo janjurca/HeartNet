@@ -200,7 +200,7 @@ def test_nll(args, epoch, model, testLoader, optimizer, testF):
     #err = 100.*incorrect/numel
     print('Test set: Average loss: {:.4f}\n'.format(test_loss))
 
-    testF.write('{},{},{}\n'.format(epoch, test_loss, err))
+    testF.write('{},{}\n'.format(epoch, test_loss))
     testF.flush()
     return test_loss
 
