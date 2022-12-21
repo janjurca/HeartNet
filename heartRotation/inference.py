@@ -21,7 +21,7 @@ import shutil
 
 import setproctitle
 
-from nets.vnet import VNet
+from nets.vnet import VNet, VNetRegression
 from utils.dataset import GomezT1Rotation
 from functools import reduce
 import operator
@@ -77,7 +77,7 @@ def main():
     args.cuda = torch.cuda.is_available()
 
     print("build vnet")
-    model = VNet(elu=False, nll=True)
+    model = VNetRegression(elu=False, nll=True)
 
     if os.path.isfile(args.checkpoint):
         print("=> loading checkpoint '{}'".format(args.checkpoint))
@@ -110,7 +110,6 @@ def main():
             data, target = data.cuda(), target.cuda()
         data, target = Variable(torch.tensor([data.tolist()]), volatile=True), Variable(target)
         output = model(data)
-        _, output = output.data.max(1)  # get the index of the max log-probability
 
         output = output.view(shape)
         output = output.cpu()
