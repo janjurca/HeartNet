@@ -56,7 +56,7 @@ def main():
     parser.add_argument('--resume', default='', type=str, metavar='PATH', help='path to latest checkpoint (default: none)')
     parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true', help='evaluate model on validation set')
     parser.add_argument('--dataset', default='./Gomez_T1', type=str, help='Dataset Path')
-    parser.add_argument('--augment', action='store_true')
+    parser.add_argument('--augment', action='store', type=int, default=0)
 
     parser.add_argument('--weight-decay', '--wd', default=1e-8, type=float, metavar='W', help='weight decay (default: 1e-8)')
     parser.add_argument('--no-cuda', action='store_true')

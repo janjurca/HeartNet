@@ -126,13 +126,13 @@ class GomezT1(Dataset):
 
 
 class GomezT1Rotation(Dataset):
-    def __init__(self, root, portion=0.75, resolution=None, augment=False):
+    def __init__(self, root, portion=0.75, resolution=None, augment=0):
         self.data = []
         self.images = []
         self.gtsas = []
         self.gtch4s = []
         self.gtch2s = []
-
+        self.augment = augment
         self.resolution = resolution
         files = glob.glob(f"{root}/original/*/image.mhd")
         if portion > 0:
@@ -164,7 +164,7 @@ class GomezT1Rotation(Dataset):
             self.gtch2s.append(gtch2)
 
         if augment:
-            self.data.extend(self.augment())
+            self.data.extend(self.augmentation())
         print("Dataset len: ", len(self.data))
 
     def __getitem__(self, index):
@@ -183,12 +183,12 @@ class GomezT1Rotation(Dataset):
     def generateVectors(self, image):
         pass
 
-    def augment(self):
+    def augmentation(self):
         augmented = []
 
         for i, (image, gtsa, gtch4, gtch2) in enumerate(zip(self.images, self.gtsas, self.gtch4s, self.gtch2s)):
             print(f"[{i}/{len(self.images)}]")
-            for _ in range(10):
+            for _ in range(self.augment):
                 theta_x = float(random.randrange(0, 2000))/100
                 theta_y = float(random.randrange(0, 2000))/100
                 theta_z = float(random.randrange(0, 2000))/100
