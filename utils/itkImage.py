@@ -114,11 +114,11 @@ class ItkImage:
         self.todo_transforms.append(transform)
         if commit:
             self.commitTransform()
-            self.refresh()
 
     def commitTransform(self):
         self.image = self.resample(sitk.CompositeTransform(self.todo_transforms))
         self.transforms.extend(self.todo_transforms)
+        self.refresh()
 
         self.todo_transforms = []
 
@@ -163,3 +163,19 @@ class ItkImage:
         transform.SetTranslation((0, 0, 0))
         transform.SetCenter(self.get_center())
         self.applyTransform(transform, commit)
+
+    def setData(self, data):
+        im = sitk.GetImageFromArray(data)
+        im.SetDirection(self.image.GetDirection())
+        im.SetOrigin(self.image.GetOrigin())
+        im.SetSpacing(self.image.GetSpacing())
+        self.image = im
+        self.refresh()
+
+    def clone(self):
+        im = ItkImage(self.filename)
+        im.setData(self.ct_scan)
+        im.transforms = self.transforms[:]
+        im.image.SetDirection(self.image.GetDirection())
+        im.image.SetSpacing(self.image.GetSpacing())
+        return im
