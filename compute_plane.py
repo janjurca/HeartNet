@@ -21,7 +21,7 @@ image = ItkImage(args.image)
 gt = ItkImage(args.file, image.res())
 
 
-sitk.Show(image.image)
+# sitk.Show(image.image)
 sitk.Show(gt.image)
 
 points = gt.points()
@@ -56,22 +56,35 @@ XAxis = Line3D(zeroPoint, sympy.Point3D(1, 0, 0))
 YAxis = Line3D(zeroPoint, sympy.Point3D(0, 1, 0))
 ZAxis = Line3D(zeroPoint, sympy.Point3D(0, 0, 1))
 
-X_ANGLE = (math.degrees(float(s_plane.angle_between(XAxis))))
-Y_ANGLE = (math.degrees(float(s_plane.angle_between(YAxis))))
-Z_ANGLE = (math.degrees(float(s_plane.angle_between(ZAxis))))
+startPoint = sympy.Point3D(*[float(x) for x in s_plane.normal_vector]).unit
+point2 = zeroPoint
+
+
+lineX = Line2D(sympy.Point2D(point2.y, point2.z), sympy.Point2D(startPoint.y, startPoint.z))
+lineY = Line2D(sympy.Point2D(point2.x, point2.z), sympy.Point2D(startPoint.x, startPoint.z))
+lineZ = Line2D(sympy.Point2D(point2.x, point2.y), sympy.Point2D(startPoint.x, startPoint.y))
+
+X_ANGLE = (math.degrees(float(lineX.angle_between(XAxis)))) % 90
+Y_ANGLE = (math.degrees(float(lineY.angle_between(YAxis))))
+Z_ANGLE = (math.degrees(float(lineZ.angle_between(ZAxis)))) - 90
 
 print(X_ANGLE, Y_ANGLE, Z_ANGLE)
 
-image.rotation3d(0, 0, Z_ANGLE, reload=False, commit=False)
-image.rotation3d(90, 0, 0, reload=False)
+gt.rotation3d(Z_ANGLE, Y_ANGLE, X_ANGLE, reload=False, commit=True)
+#gt.rotation3d(0, 90, 0, reload=False)
 
-sitk.Show(image.image)
+image.rotation3d(Z_ANGLE, Y_ANGLE, X_ANGLE, reload=False, commit=True)
+#image.rotation3d(0, 90, 0, reload=False)
+
+sitk.Show(gt.image)
+# sitk.Show(image.image)
+
 
 plot_3d(
     plane.plotter(alpha=0.2, lims_x=(-1000, 1000), lims_y=(-1000, 1000)),
     p1.plotter(),
     p2.plotter(),
-    p3.plotter()
+    p3.plotter(),
 )
 
 
