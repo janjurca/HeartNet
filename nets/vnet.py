@@ -140,10 +140,10 @@ class OutputTransition(nn.Module):
 class OutputTransitionRegression(nn.Module):
     def __init__(self, inChans, elu, nll):
         super(OutputTransitionRegression, self).__init__()
-        self.conv1 = nn.Conv3d(inChans, 2, kernel_size=5, padding=2)
-        self.bn1 = ContBatchNorm3d(2)
-        self.conv2 = nn.Conv3d(2, 1, kernel_size=1)
-        self.relu1 = ELUCons(elu, 1)
+        self.conv1 = nn.Conv3d(inChans, 3, kernel_size=5, padding=2)
+        self.bn1 = ContBatchNorm3d(3)
+        self.conv2 = nn.Conv3d(3, 3, kernel_size=1)
+        self.relu1 = ELUCons(elu, 3)
         self.regression = nn.Sigmoid()
 
     def forward(self, x):
@@ -154,9 +154,9 @@ class OutputTransitionRegression(nn.Module):
         # make channels the last axis
         out = out.permute(0, 2, 3, 4, 1).contiguous()
         # flatten
-        out = out.view(out.numel())
+        out = out.view(out.numel() // 3, 3)
         out = self.regression(out)
-        # treat channel 0 as the predicted output
+
         return out
 
 

@@ -130,6 +130,9 @@ class GomezT1Rotation(Dataset):
         self.data = []
         self.images = []
         self.gtsas = []
+        self.gtch4s = []
+        self.gtch2s = []
+
         self.resolution = resolution
         files = glob.glob(f"{root}/original/*/image.mhd")
         if portion > 0:
@@ -142,15 +145,23 @@ class GomezT1Rotation(Dataset):
             image_id = file.split(os.sep)[-2]
             gt = np.zeros((width, height, depth))
             gtsa = ItkImage(f"{root}/gt/{image_id}/gtsa.mhd", resolution=resolution)
+            gtch4 = ItkImage(f"{root}/gt/{image_id}/gtch4.mhd", resolution=resolution)
+            gtch2 = ItkImage(f"{root}/gt/{image_id}/gtch2.mhd", resolution=resolution)
 
             self.data.append(
                 (
                     torch.tensor([image.ct_scan]),
-                    torch.tensor(gtsa.ct_scan, dtype=torch.float32)
+                    torch.tensor([torch.tensor(gtsa.ct_scan, dtype=torch.float32).tolist(),
+                                  torch.tensor(gtch4.ct_scan, dtype=torch.float32).tolist(),
+                                  torch.tensor(gtch2.ct_scan, dtype=torch.float32).tolist()]
+                                 )
+
                 )
             )
             self.images.append(image)
             self.gtsas.append(gtsa)
+            self.gtch4s.append(gtch4)
+            self.gtch2s.append(gtch2)
 
         if augment:
             self.data.extend(self.augment())
@@ -175,7 +186,7 @@ class GomezT1Rotation(Dataset):
     def augment(self):
         augmented = []
 
-        for i, (image, gtsa) in enumerate(zip(self.images, self.gtsas)):
+        for i, (image, gtsa, gtch4, gtch2) in enumerate(zip(self.images, self.gtsas, self.gtch4s, self.gtch2s)):
             print(f"[{i}/{len(self.images)}]")
             for _ in range(10):
                 theta_x = float(random.randrange(0, 2000))/100
@@ -188,6 +199,8 @@ class GomezT1Rotation(Dataset):
 
                 im = self.duplicateImage(image)
                 new_gtsa = self.duplicateImage(gtsa)
+                new_gtch4 = self.duplicateImage(gtch4)
+                new_gtch2 = self.duplicateImage(gtch2)
 
                 im.translate(translate_x, translate_y, translate_z, reload=False, commit=False)
                 im.rotation3d(theta_x, theta_y, theta_z, reload=False, commit=True)
@@ -195,9 +208,17 @@ class GomezT1Rotation(Dataset):
                 new_gtsa.translate(translate_x, translate_y, translate_z, reload=False, commit=False)
                 new_gtsa.rotation3d(theta_x, theta_y, theta_z, reload=False, commit=True)
 
+                new_gtch4.translate(translate_x, translate_y, translate_z, reload=False, commit=False)
+                new_gtch4.rotation3d(theta_x, theta_y, theta_z, reload=False, commit=True)
+
+                new_gtch2.translate(translate_x, translate_y, translate_z, reload=False, commit=False)
+                new_gtch2.rotation3d(theta_x, theta_y, theta_z, reload=False, commit=True)
+
                 augmented.append((
                     torch.tensor([im.ct_scan]),
-                    torch.tensor(new_gtsa.ct_scan, dtype=torch.float32)
+                    torch.tensor([torch.tensor(new_gtsa.ct_scan, dtype=torch.float32).tolist(),
+                                  torch.tensor(new_gtch4.ct_scan, dtype=torch.float32).tolist(),
+                                  torch.tensor(new_gtch2.ct_scan, dtype=torch.float32).tolist()])
                 ))
 
         return augmented
