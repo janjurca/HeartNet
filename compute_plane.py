@@ -10,6 +10,29 @@ from sympy.geometry import Line3D, Line2D
 import math
 import SimpleITK as sitk
 import random
+from math import sqrt
+from skspatial.objects import Vector
+
+
+def fitPlane(image: ItkImage):
+    points = np.array(random.sample(image.points().tolist(), 5000))
+    xs, ys, zs = points[:, 0], points[:, 1], points[:, 2]
+    return Plane.best_fit(Points(points)), (xs, ys, zs)
+
+
+def planeAngles(plane):
+    xangle = math.degrees(Vector([1, 0, 0]).angle_between(plane.normal))
+    yangle = math.degrees(Vector([0, 1, 0]).angle_between(plane.normal))
+    zangle = math.degrees(Vector([0, 0, 1]).angle_between(plane.normal))
+    print(plane.point)
+    print("V 1:", math.degrees(Vector([1, 0]).angle_between(Vector(plane.normal[:2]))))  # XY angle
+    print("V 2:", math.degrees(Vector([0, 1]).angle_between(Vector(plane.normal[:2]))))
+    print("V 3:", math.degrees(Vector([1, 0]).angle_between(Vector(plane.normal[1:]))))
+    print("V 4:", math.degrees(Vector([0, 1]).angle_between(Vector(plane.normal[1:]))))
+    xangle = 90 - math.degrees(Vector([1, 0]).angle_between(plane.normal[1:]))
+    print(xangle, yangle, zangle)
+    return xangle, yangle, zangle
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--file', type=str, required=True)
@@ -17,64 +40,27 @@ parser.add_argument('--image', type=str, required=True)
 args = parser.parse_args()
 
 image = ItkImage(args.image)
-
 gt = ItkImage(args.file, image.res())
-
-
 # sitk.Show(image.image)
 sitk.Show(gt.image)
 
-points = gt.points()
 
-points = np.array(random.sample(points.tolist(), 500))
-
-xs = points[:, 0]
-ys = points[:, 1]
-zs = points[:, 2]
-
+plane, points = fitPlane(gt)
 fig = plt.figure()
 ax = fig.add_subplot(projection='3d')
-ax.scatter(xs, ys, zs)
-ax.set_xlabel('X Label')
-ax.set_ylabel('Y Label')
-ax.set_zlabel('Z Label')
+ax.scatter(*points)
 
 
-plane = Plane.best_fit(Points(points))
-
-axis1 = Line([0, 0, 0], [0, image.res()[1], 0])
-axis2 = Line([image.res()[0], 0, 0], [image.res()[0], image.res()[1], 0])
-axis3 = Line([image.res()[0], 0, image.res()[2]], [image.res()[0], image.res()[1], image.res()[2]])
-p1 = plane.intersect_line(axis1)
-p2 = plane.intersect_line(axis2)
-p3 = plane.intersect_line(axis3)
-
-
-s_plane = sympy.Plane(sympy.Point3D(*p1), sympy.Point3D(*p2), sympy.Point3D(*p3))
-zeroPoint = sympy.Point3D(0, 0, 0)
-XAxis = Line3D(zeroPoint, sympy.Point3D(1, 0, 0))
-YAxis = Line3D(zeroPoint, sympy.Point3D(0, 1, 0))
-ZAxis = Line3D(zeroPoint, sympy.Point3D(0, 0, 1))
-
-startPoint = sympy.Point3D(*[float(x) for x in s_plane.normal_vector]).unit
-point2 = zeroPoint
-
-
-lineX = Line2D(sympy.Point2D(point2.y, point2.z), sympy.Point2D(startPoint.y, startPoint.z))
-lineY = Line2D(sympy.Point2D(point2.x, point2.z), sympy.Point2D(startPoint.x, startPoint.z))
-lineZ = Line2D(sympy.Point2D(point2.x, point2.y), sympy.Point2D(startPoint.x, startPoint.y))
-
-X_ANGLE = (math.degrees(float(lineX.angle_between(XAxis)))) % 90
-Y_ANGLE = (math.degrees(float(lineY.angle_between(YAxis))))
-Z_ANGLE = (math.degrees(float(lineZ.angle_between(ZAxis)))) - 90
-
+X_ANGLE, Y_ANGLE, Z_ANGLE = planeAngles(plane)
 print(X_ANGLE, Y_ANGLE, Z_ANGLE)
 
-gt.rotation3d(Z_ANGLE, Y_ANGLE, X_ANGLE, reload=False, commit=True)
-#gt.rotation3d(0, 90, 0, reload=False)
 
-image.rotation3d(Z_ANGLE, Y_ANGLE, X_ANGLE, reload=False, commit=True)
-#image.rotation3d(0, 90, 0, reload=False)
+gt.rotation3d(0, 0, X_ANGLE, reload=False, commit=True)
+#gt.transformByMatrix(matrix, reload=False, commit=True)
+# gt.rotation3d(0, 90, 0, reload=False)
+
+#image.rotation3d(Z_ANGLE, Y_ANGLE, X_ANGLE, reload=False, commit=True)
+# image.rotation3d(0, 90, 0, reload=False)
 
 sitk.Show(gt.image)
 # sitk.Show(image.image)
@@ -82,9 +68,6 @@ sitk.Show(gt.image)
 
 plot_3d(
     plane.plotter(alpha=0.2, lims_x=(-1000, 1000), lims_y=(-1000, 1000)),
-    p1.plotter(),
-    p2.plotter(),
-    p3.plotter(),
 )
 
 

@@ -152,3 +152,14 @@ class ItkImage:
 
     def res(self):
         return (self.image.GetWidth(), self.image.GetHeight(), self.image.GetDepth())
+
+    def transformByMatrix(self, matrix, reload=True, commit=True):
+        if reload:
+            self.load()
+        transform = sitk.AffineTransform(3)
+        matrix = matrix[:3, :3].flatten()
+        print(matrix.flatten().tolist(), type(matrix))
+        transform.SetMatrix(matrix.tolist())
+        transform.SetTranslation((0, 0, 0))
+        transform.SetCenter(self.get_center())
+        self.applyTransform(transform, commit)
