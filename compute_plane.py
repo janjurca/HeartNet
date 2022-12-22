@@ -21,16 +21,14 @@ def fitPlane(image: ItkImage):
 
 
 def planeAngles(plane):
-    xangle = math.degrees(Vector([1, 0, 0]).angle_between(plane.normal))
-    yangle = math.degrees(Vector([0, 1, 0]).angle_between(plane.normal))
-    zangle = math.degrees(Vector([0, 0, 1]).angle_between(plane.normal))
-    print(plane.point)
+    print(plane.normal)
     print("V 1:", math.degrees(Vector([1, 0]).angle_between(Vector(plane.normal[:2]))))  # XY angle
-    print("V 2:", math.degrees(Vector([0, 1]).angle_between(Vector(plane.normal[:2]))))
+    print("V 2:", )
     print("V 3:", math.degrees(Vector([1, 0]).angle_between(Vector(plane.normal[1:]))))
     print("V 4:", math.degrees(Vector([0, 1]).angle_between(Vector(plane.normal[1:]))))
     xangle = 90 - math.degrees(Vector([1, 0]).angle_between(plane.normal[1:]))
-    print(xangle, yangle, zangle)
+    yangle = 90 - math.degrees(Vector([0, 1]).angle_between(Vector(plane.normal[:2])))
+    zangle = 90 - math.degrees(Vector([1, 0]).angle_between(Vector([plane.normal[0], plane.normal[2]])))
     return xangle, yangle, zangle
 
 
@@ -46,16 +44,13 @@ sitk.Show(gt.image)
 
 
 plane, points = fitPlane(gt)
-fig = plt.figure()
-ax = fig.add_subplot(projection='3d')
-ax.scatter(*points)
-
-
+X_ANGLE, Y_ANGLE, Z_ANGLE = planeAngles(plane)
+gt.rotation3d(0, 0, X_ANGLE, reload=False, commit=True)
+plane, points = fitPlane(gt)
 X_ANGLE, Y_ANGLE, Z_ANGLE = planeAngles(plane)
 print(X_ANGLE, Y_ANGLE, Z_ANGLE)
+gt.rotation3d(0, 90-Z_ANGLE, 0, reload=False, commit=True)
 
-
-gt.rotation3d(0, 0, X_ANGLE, reload=False, commit=True)
 #gt.transformByMatrix(matrix, reload=False, commit=True)
 # gt.rotation3d(0, 90, 0, reload=False)
 
@@ -63,7 +58,10 @@ gt.rotation3d(0, 0, X_ANGLE, reload=False, commit=True)
 # image.rotation3d(0, 90, 0, reload=False)
 
 sitk.Show(gt.image)
-# sitk.Show(image.image)
+
+image.todo_transforms = gt.transforms
+image.commitTransform()
+sitk.Show(image.image)
 
 
 plot_3d(
