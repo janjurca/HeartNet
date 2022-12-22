@@ -18,11 +18,11 @@ parser.add_argument('--dataset', default='./Gomez_T1', type=str, help='Dataset P
 parser.add_argument('--checkpoint', default='./checkpoint.pth.tar', type=str, help='model file')
 args = parser.parse_args()
 
-for image, gt in inference.inference(args.dataset, args.checkpoint):
+for image, gtsa, gtch4, gtch2 in inference.inference(args.dataset, args.checkpoint):
+    sitk.Show(gtsa.image)
     original = ItkImage(image.filename)
-    gt.resize(original.res())
-    rotated, index = rotateImage(original.clone(), gt)
-    # sitk.Show(original.image)
+    gtsa.resize(original.res())
+    rotated, index = rotateImage(original.clone(), gtsa)
     fig, (Axoriginal, AxSA) = plt.subplots(1, 2)
 
     def enter_axes(event):

@@ -47,18 +47,26 @@ def inference(dataset, checkpoint):
 
     model.eval()
     for i in range(len(inferenceSet)):
-        (data, target), image, gt = inferenceSet.get(i)
-        shape = data.size()
+        (data, target), image, gtsa, gtch4, gtch2 = inferenceSet.get(i)
+        shape = target.size()
 
         if cuda:
             data, target = data.cuda(), target.cuda()
         data, target = Variable(torch.tensor([data.tolist()]), volatile=True), Variable(target)
         output = model(data)
+        print(output.size(), )
 
         output = output.view(shape)
         output = output.cpu()
-        output = output.detach().numpy().squeeze()
-        output = np.array(output, dtype=float)
+        print(output.size())
+        output = output.detach().numpy()
+        sa = np.array(output[0], dtype=float)
+        print(sa.shape)
+        ch4 = np.array(output[1], dtype=float)
+        ch2 = np.array(output[2], dtype=float)
 
-        gt.setData(output)
-        yield image, gt
+        gtsa.setData(sa)
+        gtch4.setData(ch4)
+        gtch2.setData(ch2)
+
+        yield image, gtsa, gtch4, gtch2
