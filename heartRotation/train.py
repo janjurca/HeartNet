@@ -159,9 +159,7 @@ def train_nll(args, epoch, model, trainLoader, optimizer, trainF):
         data, target = Variable(data), Variable(target)
         optimizer.zero_grad()
         output = model(data)
-        print(output.size(), target.size())
         target = target.view(target.numel() // 3, 3)
-        print(output.size(), target.size())
         loss = lossFunction(output, target)
         # make_graph.save('/tmp/t.dot', loss.creator); assert(False)
         loss.backward()
@@ -190,7 +188,7 @@ def test_nll(args, epoch, model, testLoader, optimizer, testF):
         if args.cuda:
             data, target = data.cuda(), target.cuda()
         data, target = Variable(data, volatile=True), Variable(target)
-        target = target.view(target.numel())
+        target = target.view(target.numel() // 3, 3)
         numel += target.numel()
         output = model(data)
         test_loss += lossFunction(output, target).item()
