@@ -29,9 +29,9 @@ import SimpleITK as sitk
 import matplotlib.pyplot as plt
 
 
-def inference(dataset, checkpoint):
+def inference(dataset, checkpoint, planes=["sa", "ch4", "ch2"]):
     cuda = torch.cuda.is_available()
-    model = VNetRegression(elu=False, nll=True)
+    model = VNetRegression(elu=False, nll=True, outCH=len(planes))
 
     print("=> loading checkpoint '{}'".format(checkpoint))
     checkpoint = torch.load(checkpoint, map_location=torch.device('cpu'))
@@ -42,28 +42,38 @@ def inference(dataset, checkpoint):
 
     kwargs = {'num_workers': 1, 'pin_memory': True} if cuda else {}
 
-    print("loading training set")
-    inferenceSet = GomezT1Rotation(root=dataset, portion=1, resolution=[128, 128, 128])
-
     model.eval()
-    for i in range(len(inferenceSet)):
-        (data, target), image, gtsa, gtch4, gtch2 = inferenceSet.get(i)
-        shape = target.size()
+    for i in range(len(dataset)):
+        (data, _), image, gtsa, gtch4, gtch2 = dataset.get(i)
 
         if cuda:
-            data, target = data.cuda(), target.cuda()
-        data, target = Variable(torch.tensor([data.tolist()]), volatile=True), Variable(target)
-        output = model(data)
+            data = data.cuda()
 
-        output = output.view(shape)
+        with torch.no_grad():
+            data = torch.tensor([data.tolist()])
+            output = model(data)
+
+        output = output.view([len(planes), 128, 128, 128])
         output = output.cpu()
         output = output.detach().numpy()
-        sa = np.array(output[0], dtype=float)
-        ch4 = np.array(output[1], dtype=float)
-        ch2 = np.array(output[2], dtype=float)
-
-        gtsa.setData(sa)
-        gtch4.setData(ch4)
-        gtch2.setData(ch2)
+        if len(planes) == 1:
+            if "sa" in planes:
+                sa = np.array(output[0], dtype=float)
+                gtsa.setData(sa)
+            if "ch4" in planes:
+                ch4 = np.array(output[0], dtype=float)
+                gtch4.setData(ch4)
+            if "ch2" in planes:
+                ch2 = np.array(output[0], dtype=float)
+                gtch2.setData(ch2)
+        elif len(planes) == 3:
+            sa = np.array(output[0], dtype=float)
+            ch4 = np.array(output[1], dtype=float)
+            ch2 = np.array(output[2], dtype=float)
+            gtsa.setData(sa)
+            gtch4.setData(ch4)
+            gtch2.setData(ch2)
+        else:
+            raise Exception("Planes are badly defined.")
 
         yield image, gtsa, gtch4, gtch2

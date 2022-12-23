@@ -5,6 +5,7 @@ from utils.compute_plane import rotateImage
 from utils.itkImage import ItkImage
 from utils.volumeImage import VolumeImage
 import matplotlib.pylab as plt
+from utils.dataset import GomezT1Rotation
 
 
 class GL:
@@ -16,12 +17,15 @@ gl = GL()
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default='./Gomez_T1', type=str, help='Dataset Path')
 parser.add_argument('--checkpoint', default='./checkpoint.pth.tar', type=str, help='model file')
+parser.add_argument('--checkpoint-sa', default='./checkpoint.pth.tar', type=str, help='model file')
 args = parser.parse_args()
 
-for image, gtsa, gtch4, gtch2 in inference.inference(args.dataset, args.checkpoint):
-    # sitk.Show(gtsa.image)
-    # sitk.Show(gtch4.image)
-    # sitk.Show(gtch2.image)
+inferenceSet = GomezT1Rotation(root=args.dataset, portion=0.05, resolution=[128, 128, 128])
+
+for (image, gtsa, gtch4, gtch2), (image_sa, gtsa_sa, gtch4_sa, gtch2_sa) in zip(inference.inference(inferenceSet, args.checkpoint),
+                                                                                inference.inference(inferenceSet, args.checkpoint_sa, ["sa"])):
+    sitk.Show(gtsa.image)
+    sitk.Show(gtch4.image)
 
     original = ItkImage(image.filename)
     gtsa.resize(original.res())
@@ -32,8 +36,8 @@ for image, gtsa, gtch4, gtch2 in inference.inference(args.dataset, args.checkpoi
     imageSA, indexSA = rotateImage(ItkImage(original.filename), gtsa)
     fig, (Axoriginal, AxSA, AxCH4, AxCH2) = plt.subplots(1, 4)
 
-    sitk.Show(ItkImage(original.filename).image)
-    sitk.Show(imageCH4.image)
+    # sitk.Show(ItkImage(original.filename).image)
+    # sitk.Show(imageCH4.image)
 
     def enter_axes(event):
         gl.selected_axis = event.inaxes
