@@ -7,10 +7,10 @@ class ItkImage:
         self.filename = filename
         self.resolution = resolution
         self.augment_mhd_file()
-        self.load()
         self.heartBox = {}
         self.transforms = []
         self.todo_transforms = []
+        self.load()
 
     def augment_mhd_file(self):
         new_content = ""
@@ -147,7 +147,7 @@ class ItkImage:
         self.heartBox["front"] = front
         self.heartBox["back"] = back
 
-    def points(self, threshold=0.5):
+    def points(self, threshold=0.8):
         print(np.max(self.ct_scan))
         return np.argwhere(self.ct_scan > threshold)
 
@@ -175,7 +175,7 @@ class ItkImage:
 
     def clone(self):
         im = ItkImage(self.filename)
-        im.setData(self.ct_scan)
+        im.setData(self.ct_scan[:])
         im.transforms = self.transforms[:]
         im.image.SetDirection(self.image.GetDirection())
         im.image.SetSpacing(self.image.GetSpacing())
