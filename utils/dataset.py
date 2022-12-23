@@ -192,13 +192,13 @@ class GomezT1Rotation(Dataset):
         for i, (image, gtsa, gtch4, gtch2) in enumerate(zip(self.images, self.gtsas, self.gtch4s, self.gtch2s)):
             print(f"[{i}/{len(self.images)}]")
             for _ in range(self.augment):
-                theta_x = float(random.randrange(0, 2000))/100
-                theta_y = float(random.randrange(0, 2000))/100
-                theta_z = float(random.randrange(0, 2000))/100
+                theta_x = float(random.randrange(-2000, 2000))/100
+                theta_y = float(random.randrange(-2000, 2000))/100
+                theta_z = float(random.randrange(-2000, 2000))/100
 
-                translate_x = float(random.randrange(0, 2000))/100
-                translate_y = float(random.randrange(0, 2000))/100
-                translate_z = float(random.randrange(0, 2000))/100
+                translate_x = float(random.randrange(-2000, 2000))/100
+                translate_y = float(random.randrange(-2000, 2000))/100
+                translate_z = float(random.randrange(-2000, 2000))/100
 
                 im = self.duplicateImage(image)
                 new_gtsa = self.duplicateImage(gtsa)
