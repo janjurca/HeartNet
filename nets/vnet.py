@@ -140,9 +140,9 @@ class OutputTransition(nn.Module):
 class OutputTransitionRegression(nn.Module):
     def __init__(self, inChans, elu, nll, outCH):
         super(OutputTransitionRegression, self).__init__()
-        self.conv1 = nn.Conv3d(inChans, outCH, kernel_size=5, padding=2)
-        self.bn1 = ContBatchNorm3d(outCH)
-        self.conv2 = nn.Conv3d(outCH, outCH, kernel_size=1)
+        self.conv1 = nn.Conv3d(inChans, outCH+1, kernel_size=5, padding=2)
+        self.bn1 = ContBatchNorm3d(outCH+1)
+        self.conv2 = nn.Conv3d(outCH+1, outCH, kernel_size=1)
         self.relu1 = ELUCons(elu, outCH)
         self.regression = nn.Sigmoid()
         self.outCH = outCH
