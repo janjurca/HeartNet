@@ -144,19 +144,21 @@ class GomezT1Rotation(Dataset):
             image = ItkImage(file, resolution=resolution)
             image_id = file.split(os.sep)[-2]
 
+            gtsa = ItkImage(f"{root}/gt/{image_id}/gtsa.mhd", resolution=resolution)
+            gtch4 = ItkImage(f"{root}/gt/{image_id}/gtch4.mhd", resolution=resolution)
+            gtch2 = ItkImage(f"{root}/gt/{image_id}/gtch2.mhd", resolution=resolution)
+
             v = []
             if "sa" in planes:
-                gtsa = ItkImage(f"{root}/gt/{image_id}/gtsa.mhd", resolution=resolution)
                 v.append(torch.tensor(gtsa.ct_scan, dtype=torch.float32).tolist())
-                self.gtsas.append(gtsa)
             if "ch4" in planes:
-                gtch4 = ItkImage(f"{root}/gt/{image_id}/gtch4.mhd", resolution=resolution)
                 v.append(torch.tensor(gtch4.ct_scan, dtype=torch.float32).tolist())
-                self.gtch4s.append(gtch4)
             if "ch2" in planes:
-                gtch2 = ItkImage(f"{root}/gt/{image_id}/gtch2.mhd", resolution=resolution)
                 v.append(torch.tensor(gtch2.ct_scan, dtype=torch.float32).tolist())
-                self.gtch2s.append(gtch2)
+
+            self.gtsas.append(gtsa)
+            self.gtch4s.append(gtch4)
+            self.gtch2s.append(gtch2)
 
             self.data.append(
                 (
