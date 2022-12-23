@@ -148,7 +148,7 @@ class ItkImage:
         self.heartBox["back"] = back
 
     def points(self, threshold=0.9):
-        return np.argwhere(self.ct_scan > 0.9)
+        return np.argwhere(self.ct_scan > 0.8)
 
     def res(self):
         return (self.image.GetWidth(), self.image.GetHeight(), self.image.GetDepth())

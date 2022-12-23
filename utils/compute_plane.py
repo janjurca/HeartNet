@@ -31,12 +31,12 @@ def rotateImage(image, mask):
     plane, points = fitPlane(mask)
     X_ANGLE, Y_ANGLE, Z_ANGLE = planeAngles(plane)
     mask.rotation3d(0, 0, X_ANGLE, reload=False, commit=True)
+    image.rotation3d(0, 0, X_ANGLE, reload=False, commit=True)
     plane, points = fitPlane(mask)
     X_ANGLE, Y_ANGLE, Z_ANGLE = planeAngles(plane)
     mask.rotation3d(0, 90-Z_ANGLE, 0, reload=False, commit=True)
+    image.rotation3d(0, 90-Z_ANGLE, 0, reload=False, commit=True)
     index = np.argmax(np.sum(np.sum(mask.ct_scan, 1), 1))
-    image.todo_transforms = mask.transforms
-    image.commitTransform()
     return image, index
 
 
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     mask = ItkImage(args.mask)
 
     image, index = rotateImage(image, mask)
-    sitk.Show(image.image)
+    # sitk.Show(image.image)
 
     # plot_3d(
     #    plane.plotter(alpha=0.2, lims_x=(-1000, 1000), lims_y=(-1000, 1000)),

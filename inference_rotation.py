@@ -19,17 +19,31 @@ parser.add_argument('--checkpoint', default='./checkpoint.pth.tar', type=str, he
 args = parser.parse_args()
 
 for image, gtsa, gtch4, gtch2 in inference.inference(args.dataset, args.checkpoint):
-    sitk.Show(gtsa.image)
+    # sitk.Show(gtsa.image)
+    # sitk.Show(gtch4.image)
+    # sitk.Show(gtch2.image)
+
     original = ItkImage(image.filename)
     gtsa.resize(original.res())
-    rotated, index = rotateImage(original.clone(), gtsa)
-    fig, (Axoriginal, AxSA) = plt.subplots(1, 2)
+    gtch4.resize(original.res())
+    gtch2.resize(original.res())
+    imageCH4, indexCH4 = rotateImage(ItkImage(original.filename), gtch4)
+    imageCH2, indexCH2 = rotateImage(ItkImage(original.filename), gtch2)
+    imageSA, indexSA = rotateImage(ItkImage(original.filename), gtsa)
+    fig, (Axoriginal, AxSA, AxCH4, AxCH2) = plt.subplots(1, 4)
+
+    sitk.Show(ItkImage(original.filename).image)
+    sitk.Show(imageCH4.image)
 
     def enter_axes(event):
         gl.selected_axis = event.inaxes
     fig.canvas.mpl_connect('axes_enter_event', enter_axes)
 
     plotOrig = VolumeImage(original, Axoriginal, fig, "Original", gl)
-    plotSA = VolumeImage(rotated, AxSA, fig, "SA", gl)
-    plotSA.setIndex(index)
+    plotSA = VolumeImage(imageSA, AxSA, fig, "SA", gl)
+    plotSA.setIndex(indexSA)
+    plotCH4 = VolumeImage(imageCH4, AxCH4, fig, "CH4", gl)
+    plotCH4.setIndex(indexCH4)
+    plotCH2 = VolumeImage(imageCH2, AxCH2, fig, "CH2", gl)
+    plotCH2.setIndex(indexCH2)
     plt.show()

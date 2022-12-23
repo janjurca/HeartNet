@@ -54,14 +54,11 @@ def inference(dataset, checkpoint):
             data, target = data.cuda(), target.cuda()
         data, target = Variable(torch.tensor([data.tolist()]), volatile=True), Variable(target)
         output = model(data)
-        print(output.size(), )
 
         output = output.view(shape)
         output = output.cpu()
-        print(output.size())
         output = output.detach().numpy()
         sa = np.array(output[0], dtype=float)
-        print(sa.shape)
         ch4 = np.array(output[1], dtype=float)
         ch2 = np.array(output[2], dtype=float)
 
