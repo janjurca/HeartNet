@@ -50,13 +50,13 @@ def save_checkpoint(state, is_best, path, prefix, filename='checkpoint.pth.tar')
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--batchSz', type=int, default=1)
-    parser.add_argument('--dice', action='store_true')
     parser.add_argument('--nEpochs', type=int, default=300)
     parser.add_argument('--start-epoch', default=0, type=int, metavar='N', help='manual epoch number (useful on restarts)')
     parser.add_argument('--resume', default='', type=str, metavar='PATH', help='path to latest checkpoint (default: none)')
     parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true', help='evaluate model on validation set')
     parser.add_argument('--dataset', default='./Gomez_T1', type=str, help='Dataset Path')
     parser.add_argument('--augment', action='store', type=int, default=0)
+    parser.add_argument('--planes', action='store', type=str, default="sa,ch4,ch2")
 
     parser.add_argument('--weight-decay', '--wd', default=1e-8, type=float, metavar='W', help='weight decay (default: 1e-8)')
     parser.add_argument('--no-cuda', action='store_true')
@@ -64,12 +64,11 @@ def main():
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--opt', type=str, default='adam', choices=('sgd', 'adam', 'rmsprop'))
     args = parser.parse_args()
+    planes = args.planes.split(",")
     best_prec1 = 100.
     args.cuda = not args.no_cuda and torch.cuda.is_available()
-    args.save = args.save or 'work/rotation.base.{}'.format(datestr())
+    args.save = args.save or f'work/rotation_{args.planes}.base.{datestr()}'
     nll = True
-    if args.dice:
-        nll = False
     weight_decay = args.weight_decay
 
     torch.manual_seed(args.seed)
@@ -77,7 +76,7 @@ def main():
         torch.cuda.manual_seed(args.seed)
 
     print("build vnet")
-    model = VNetRegression(elu=False, nll=nll)
+    model = VNetRegression(elu=False, nll=nll, outCH=len(planes))
     batch_size = args.batchSz
 
     if args.resume:
@@ -94,15 +93,6 @@ def main():
     else:
         model.apply(weights_init)
 
-    if nll:
-        train = train_nll
-        test = test_nll
-        class_balance = True
-    else:
-        train = train_dice
-        test = test_dice
-        class_balance = False
-
     print('  + Number of params: {}'.format(sum([p.data.nelement() for p in model.parameters()])))
     if args.cuda:
         model = model.cuda()
@@ -114,15 +104,14 @@ def main():
     kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 
     print("loading training set")
-    trainSet = GomezT1Rotation(root=args.dataset, portion=0.75, resolution=[128, 128, 128], augment=args.augment)
+    trainSet = GomezT1Rotation(root=args.dataset, portion=0.75, resolution=[128, 128, 128], augment=args.augment, planes=planes)
     trainLoader = DataLoader(trainSet, batch_size=batch_size, shuffle=True, **kwargs)
     print("loading test set")
-    testSet = GomezT1Rotation(root=args.dataset,  portion=-0.25, resolution=[128, 128, 128], augment=args.augment)
+    testSet = GomezT1Rotation(root=args.dataset,  portion=-0.25, resolution=[128, 128, 128], augment=args.augment, planes=planes)
     testLoader = DataLoader(testSet, batch_size=1, shuffle=False, **kwargs)
 
     if args.opt == 'sgd':
-        optimizer = optim.SGD(model.parameters(), lr=1e-1,
-                              momentum=0.99, weight_decay=weight_decay)
+        optimizer = optim.SGD(model.parameters(), lr=1e-1, momentum=0.99, weight_decay=weight_decay)
     elif args.opt == 'adam':
         optimizer = optim.Adam(model.parameters(), weight_decay=weight_decay)
     elif args.opt == 'rmsprop':
@@ -133,22 +122,19 @@ def main():
     err_best = 100.
     for epoch in range(1, args.nEpochs + 1):
         adjust_opt(args.opt, optimizer, epoch)
-        train(args, epoch, model, trainLoader, optimizer, trainF)
-        err = test(args, epoch, model, testLoader, optimizer, testF)
+        train(args, epoch, model, trainLoader, optimizer, trainF, planes)
+        err = test(args, epoch, model, testLoader, optimizer, testF, planes)
         is_best = False
         if err < best_prec1:
             is_best = True
             best_prec1 = err
-        save_checkpoint({'epoch': epoch,
-                         'state_dict': model.state_dict(),
-                         'best_prec1': best_prec1},
-                        is_best, args.save, "rotation")
+        save_checkpoint({'epoch': epoch, 'state_dict': model.state_dict(), 'best_prec1': best_prec1}, is_best, args.save, "rotation")
 
     trainF.close()
     testF.close()
 
 
-def train_nll(args, epoch, model, trainLoader, optimizer, trainF):
+def train(args, epoch, model, trainLoader, optimizer, trainF, planes):
     model.train()
     nProcessed = 0
     nTrain = len(trainLoader.dataset)
@@ -159,7 +145,10 @@ def train_nll(args, epoch, model, trainLoader, optimizer, trainF):
         data, target = Variable(data), Variable(target)
         optimizer.zero_grad()
         output = model(data)
-        target = target.view(target.numel() // 3, 3)
+        if len(planes) == 1:
+            target = target.view(target.numel())
+        else:
+            target = target.view(target.numel() // len(planes), len(planes))
         loss = lossFunction(output, target)
         # make_graph.save('/tmp/t.dot', loss.creator); assert(False)
         loss.backward()
@@ -177,27 +166,22 @@ def train_nll(args, epoch, model, trainLoader, optimizer, trainF):
         trainF.flush()
 
 
-def test_nll(args, epoch, model, testLoader, optimizer, testF):
+def test(args, epoch, model, testLoader, optimizer, testF, planes):
     model.eval()
     test_loss = 0
-    dice_loss = 0
-    incorrect = 0
-    numel = 0
     lossFunction = torch.nn.MSELoss()
     for data, target in testLoader:
         if args.cuda:
             data, target = data.cuda(), target.cuda()
         data, target = Variable(data, volatile=True), Variable(target)
-        target = target.view(target.numel() // 3, 3)
-        numel += target.numel()
+        if len(planes) == 1:
+            target = target.view(target.numel())
+        else:
+            target = target.view(target.numel() // len(planes), len(planes))
         output = model(data)
         test_loss += lossFunction(output, target).item()
-        # pred = output.data.max(1)[1]  # get the index of the max log-probability
-        #incorrect += pred.ne(target.data).cpu().sum()
 
     test_loss /= len(testLoader)  # loss function already averages over batch size
-    dice_loss /= len(testLoader)
-    #err = 100.*incorrect/numel
     print('Test set: Average loss: {:.4f}\n'.format(test_loss))
 
     testF.write('{},{}\n'.format(epoch, test_loss))

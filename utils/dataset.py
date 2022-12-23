@@ -126,12 +126,13 @@ class GomezT1(Dataset):
 
 
 class GomezT1Rotation(Dataset):
-    def __init__(self, root, portion=0.75, resolution=None, augment=0):
+    def __init__(self, root, portion=0.75, resolution=None, augment=0, planes=["sa", "ch4", "ch2"]):
         self.data = []
         self.images = []
         self.gtsas = []
         self.gtch4s = []
         self.gtch2s = []
+        self.planes = planes
         self.augment = augment
         self.resolution = resolution
         files = glob.glob(f"{root}/original/*/image.mhd")
@@ -141,27 +142,29 @@ class GomezT1Rotation(Dataset):
             files = files[int((1+portion)*len(files)):]
         for file in files:
             image = ItkImage(file, resolution=resolution)
-            width, height, depth = image.image.GetSize()
             image_id = file.split(os.sep)[-2]
-            gt = np.zeros((width, height, depth))
-            gtsa = ItkImage(f"{root}/gt/{image_id}/gtsa.mhd", resolution=resolution)
-            gtch4 = ItkImage(f"{root}/gt/{image_id}/gtch4.mhd", resolution=resolution)
-            gtch2 = ItkImage(f"{root}/gt/{image_id}/gtch2.mhd", resolution=resolution)
+
+            v = []
+            if "sa" in planes:
+                gtsa = ItkImage(f"{root}/gt/{image_id}/gtsa.mhd", resolution=resolution)
+                v.append(torch.tensor(gtsa.ct_scan, dtype=torch.float32).tolist())
+                self.gtsas.append(gtsa)
+            if "ch4" in planes:
+                gtch4 = ItkImage(f"{root}/gt/{image_id}/gtch4.mhd", resolution=resolution)
+                v.append(torch.tensor(gtch4.ct_scan, dtype=torch.float32).tolist())
+                self.gtch4s.append(gtch4)
+            if "ch2" in planes:
+                gtch2 = ItkImage(f"{root}/gt/{image_id}/gtch2.mhd", resolution=resolution)
+                v.append(torch.tensor(gtch2.ct_scan, dtype=torch.float32).tolist())
+                self.gtch2s.append(gtch2)
 
             self.data.append(
                 (
                     torch.tensor([image.ct_scan]),
-                    torch.tensor([torch.tensor(gtsa.ct_scan, dtype=torch.float32).tolist(),
-                                  torch.tensor(gtch4.ct_scan, dtype=torch.float32).tolist(),
-                                  torch.tensor(gtch2.ct_scan, dtype=torch.float32).tolist()]
-                                 )
-
+                    torch.tensor(v)
                 )
             )
             self.images.append(image)
-            self.gtsas.append(gtsa)
-            self.gtch4s.append(gtch4)
-            self.gtch2s.append(gtch2)
 
         if augment:
             self.data.extend(self.augmentation())
@@ -214,11 +217,17 @@ class GomezT1Rotation(Dataset):
                 new_gtch2.translate(translate_x, translate_y, translate_z, reload=False, commit=False)
                 new_gtch2.rotation3d(theta_x, theta_y, theta_z, reload=False, commit=True)
 
+                v = []
+                if "sa" in self.planes:
+                    v.append(torch.tensor(gtsa.ct_scan, dtype=torch.float32).tolist())
+                if "ch4" in self.planes:
+                    v.append(torch.tensor(gtch4.ct_scan, dtype=torch.float32).tolist())
+                if "ch2" in self.planes:
+                    v.append(torch.tensor(gtch2.ct_scan, dtype=torch.float32).tolist())
+
                 augmented.append((
                     torch.tensor([im.ct_scan]),
-                    torch.tensor([torch.tensor(new_gtsa.ct_scan, dtype=torch.float32).tolist(),
-                                  torch.tensor(new_gtch4.ct_scan, dtype=torch.float32).tolist(),
-                                  torch.tensor(new_gtch2.ct_scan, dtype=torch.float32).tolist()])
+                    torch.tensor(v)
                 ))
 
         return augmented

@@ -138,13 +138,14 @@ class OutputTransition(nn.Module):
 
 
 class OutputTransitionRegression(nn.Module):
-    def __init__(self, inChans, elu, nll):
+    def __init__(self, inChans, elu, nll, outCH):
         super(OutputTransitionRegression, self).__init__()
-        self.conv1 = nn.Conv3d(inChans, 3, kernel_size=5, padding=2)
-        self.bn1 = ContBatchNorm3d(3)
-        self.conv2 = nn.Conv3d(3, 3, kernel_size=1)
-        self.relu1 = ELUCons(elu, 3)
+        self.conv1 = nn.Conv3d(inChans, outCH, kernel_size=5, padding=2)
+        self.bn1 = ContBatchNorm3d(outCH)
+        self.conv2 = nn.Conv3d(outCH, outCH, kernel_size=1)
+        self.relu1 = ELUCons(elu, outCH)
         self.regression = nn.Sigmoid()
+        self.outCH = outCH
 
     def forward(self, x):
         # convolve 32 down to 2 channels
@@ -154,7 +155,11 @@ class OutputTransitionRegression(nn.Module):
         # make channels the last axis
         out = out.permute(0, 2, 3, 4, 1).contiguous()
         # flatten
-        out = out.view(out.numel() // 3, 3)
+        if self.outCH == 1:
+            out = out.view(out.numel())
+        else:
+            out = out.view(out.numel() // self.outCH, self.outCH)
+
         out = self.regression(out)
 
         return out
@@ -191,6 +196,6 @@ class VNet(nn.Module):
 
 
 class VNetRegression(VNet):
-    def __init__(self, elu=True, nll=False):
+    def __init__(self, elu=True, nll=False, outCH=3):
         super().__init__(elu=True, nll=False)
-        self.out_tr = OutputTransitionRegression(32, elu, nll)
+        self.out_tr = OutputTransitionRegression(32, elu, nll, outCH)
