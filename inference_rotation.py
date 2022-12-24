@@ -22,38 +22,63 @@ parser.add_argument('--checkpoint-ch4', required=True, type=str, help='model fil
 parser.add_argument('--checkpoint-ch2', required=True, type=str, help='model file')
 args = parser.parse_args()
 
-inferenceSet = GomezT1Rotation(root=args.dataset, portion=0.05, resolution=[128, 128, 128])
+inferenceSet = GomezT1Rotation(root=args.dataset, portion=0.2, resolution=[128, 128, 128])
 
-for (image, gtsa, gtch4, gtch2), (_, gtsa_solo, _, _), (_, _, gtch4_solo, _), (_, _, _, gtch2_solo) in zip(
+for i, ((image, Rotsa, Rotch4, Rotch2), (_, Rotsa_solo, _, _), (_, _, Rotch4_solo, _), (_, _, _, Rotch2_solo)) in enumerate(zip(
     inference.inference(inferenceSet, args.checkpoint),
     inference.inference(inferenceSet, args.checkpoint_sa, ["sa"]),
     inference.inference(inferenceSet, args.checkpoint_ch4, ["ch4"]),
     inference.inference(inferenceSet, args.checkpoint_ch2, ["ch2"]),
-):
+)):
+    (_, _), _, gtsa, gtch4, gtch2 = inferenceSet.get(i)
+
+    gtsa = gtsa.clone()
+    gtch4 = gtch4.clone()
+    gtch2 = gtch2.clone()
 
     original = ItkImage(image.filename)
+    Rotsa.resize(original.res())
+    Rotch4.resize(original.res())
+    Rotch2.resize(original.res())
+    Rotsa_solo.resize(original.res())
+    Rotch4_solo.resize(original.res())
+    Rotch2_solo.resize(original.res())
+
     gtsa.resize(original.res())
     gtch4.resize(original.res())
     gtch2.resize(original.res())
-    gtsa_solo.resize(original.res())
-    gtch4_solo.resize(original.res())
-    gtch2_solo.resize(original.res())
 
-    imageCH4, indexCH4 = rotateImage(ItkImage(original.filename), gtch4)
-    imageCH2, indexCH2 = rotateImage(ItkImage(original.filename), gtch2)
-    imageSA, indexSA = rotateImage(ItkImage(original.filename), gtsa)
+    print("Proccesing multishot results")
+    print("CH4")
+    imageCH4, indexCH4 = rotateImage(ItkImage(original.filename), Rotch4)
+    print("CH2")
+    imageCH2, indexCH2 = rotateImage(ItkImage(original.filename), Rotch2)
+    print("SA")
+    imageSA, indexSA = rotateImage(ItkImage(original.filename), Rotsa)
 
-    imageCH4_solo, indexCH4_solo = rotateImage(ItkImage(original.filename), gtch4_solo)
-    imageCH2_solo, indexCH2_solo = rotateImage(ItkImage(original.filename), gtch2_solo)
-    imageSA_solo, indexSA_solo = rotateImage(ItkImage(original.filename), gtsa_solo)
+    print("Proccesing solo results")
+    print("CH4")
+    imageCH4_solo, indexCH4_solo = rotateImage(ItkImage(original.filename), Rotch4_solo)
+    print("CH2")
+    imageCH2_solo, indexCH2_solo = rotateImage(ItkImage(original.filename), Rotch2_solo)
+    print("SA")
+    imageSA_solo, indexSA_solo = rotateImage(ItkImage(original.filename), Rotsa_solo)
 
-    fig, (Axoriginal, AxSA, AxCH4, AxCH2, AxOriginal_solo, AxSA_solo, AxCH4_solo, AxCH2_solo) = plt.subplots(1, 8)
+    print("Proccesing GTS")
+    print("CH4")
+    imageCH4_gt, indexCH4_gt = rotateImage(ItkImage(original.filename), gtch4)
+    print("CH2")
+    imageCH2_gt, indexCH2_gt = rotateImage(ItkImage(original.filename), gtch2)
+    print("SA")
+    imageSA_gt, indexSA_gt = rotateImage(ItkImage(original.filename), gtsa)
+
+    fig, ((AxSA_gt, AxCH4_gt, AxCH2_gt), (AxSA, AxCH4,  AxCH2), (AxSA_solo, AxCH4_solo, AxCH2_solo)) = plt.subplots(3, 3)
 
     def enter_axes(event):
         gl.selected_axis = event.inaxes
     fig.canvas.mpl_connect('axes_enter_event', enter_axes)
 
-    plotOrig = VolumeImage(original, Axoriginal, fig, "Original", gl)
+    #plotOrig = VolumeImage(original, Axoriginal, fig, "Original", gl)
 
     plotSA = VolumeImage(imageSA, AxSA, fig, "SA", gl)
     plotSA.setIndex(indexSA)
@@ -68,5 +93,12 @@ for (image, gtsa, gtch4, gtch2), (_, gtsa_solo, _, _), (_, _, gtch4_solo, _), (_
     plotCH4_solo.setIndex(indexCH4_solo)
     plotCH2_solo = VolumeImage(imageCH2_solo, AxCH2_solo, fig, "CH2_solo", gl)
     plotCH2_solo.setIndex(indexCH2_solo)
+
+    plotSA_gt = VolumeImage(imageSA_gt, AxSA_gt, fig, "SA_gt", gl)
+    plotSA_gt.setIndex(indexSA_gt)
+    plotCH4_gt = VolumeImage(imageCH4_gt, AxCH4_gt, fig, "CH4_gt", gl)
+    plotCH4_gt.setIndex(indexCH4_gt)
+    plotCH2_gt = VolumeImage(imageCH2_gt, AxCH2_gt, fig, "CH2_gt", gl)
+    plotCH2_gt.setIndex(indexCH2_solo)
 
     plt.show()
