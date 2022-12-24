@@ -198,17 +198,25 @@ class GomezT1Rotation(Dataset):
                 theta_y = float(random.randrange(-2000, 2000))/100
                 theta_z = float(random.randrange(-2000, 2000))/100
 
+                translate_x = float(random.randrange(-2000, 2000))/100
+                translate_y = float(random.randrange(-2000, 2000))/100
+                translate_z = float(random.randrange(-2000, 2000))/100
+
                 im = self.duplicateImage(image)
                 new_gtsa = self.duplicateImage(gtsa)
                 new_gtch4 = self.duplicateImage(gtch4)
                 new_gtch2 = self.duplicateImage(gtch2)
 
+                im.translate(translate_x, translate_y, translate_z, reload=False, commit=False)
                 im.rotation3d(theta_x, theta_y, theta_z, reload=False, commit=True)
 
+                new_gtsa.translate(translate_x, translate_y, translate_z, reload=False, commit=False)
                 new_gtsa.rotation3d(theta_x, theta_y, theta_z, reload=False, commit=True)
 
+                new_gtch4.translate(translate_x, translate_y, translate_z, reload=False, commit=False)
                 new_gtch4.rotation3d(theta_x, theta_y, theta_z, reload=False, commit=True)
 
+                new_gtch2.translate(translate_x, translate_y, translate_z, reload=False, commit=False)
                 new_gtch2.rotation3d(theta_x, theta_y, theta_z, reload=False, commit=True)
 
                 v = []
