@@ -45,7 +45,9 @@ def inference(dataset, checkpoint, planes=["sa", "ch4", "ch2"]):
     model.eval()
     for i in range(len(dataset)):
         (data, _), image, gtsa, gtch4, gtch2 = dataset.get(i)
-
+        gtsa = gtsa.clone()
+        gtch4 = gtch4.clone()
+        gtch2 = gtch2.clone()
         if cuda:
             data = data.cuda()
 
