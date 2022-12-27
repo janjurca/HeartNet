@@ -139,6 +139,7 @@ class GomezT1Rotation(Dataset):
         self.augment = augment
         self.resolution = resolution
         files = glob.glob(f"{root}/original/*/image.mhd")
+        self.file_ids = []
         if portion > 0:
             files = files[:int(portion*len(files))]
         else:
@@ -146,7 +147,7 @@ class GomezT1Rotation(Dataset):
         for file in files:
             image = ItkImage(file, resolution=resolution)
             image_id = file.split(os.sep)[-2]
-
+            self.file_ids.append(image_id)
             gtsa = ItkImage(f"{root}/gt/{image_id}/gtsa.mhd", resolution=resolution)
             gtch4 = ItkImage(f"{root}/gt/{image_id}/gtch4.mhd", resolution=resolution)
             gtch2 = ItkImage(f"{root}/gt/{image_id}/gtch2.mhd", resolution=resolution)

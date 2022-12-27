@@ -119,6 +119,8 @@ def main():
 
     trainF = open(os.path.join(args.save, 'train.csv'), 'w')
     testF = open(os.path.join(args.save, 'test.csv'), 'w')
+    with open(os.path.join(args.save, 'dataset_split.txt'), 'w') as fp:
+        fp.write(f"Train:{', '.join(trainSet.file_ids)}\nTest:{', '.join(testSet.file_ids)}")
     err_best = 100.
     for epoch in range(1, args.nEpochs + 1):
         adjust_opt(args.opt, optimizer, epoch)
