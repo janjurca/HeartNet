@@ -166,7 +166,7 @@ class GomezT1Rotation(Dataset):
 
             self.data.append(
                 (
-                    torch.tensor([F.normalize(torch.tensor(image.ct_scan)).tolist()]),
+                    torch.tensor(image.ct_scan/np.max(image.ct_scan)).unsqueeze(0),
                     torch.tensor(v)
                 )
             )
@@ -239,7 +239,7 @@ class GomezT1Rotation(Dataset):
                     v.append(torch.tensor(gtch2.ct_scan, dtype=torch.float32).tolist())
 
                 augmented.append((
-                    torch.tensor([F.normalize(torch.tensor(im.ct_scan)).tolist()]),
+                    torch.tensor(im.ct_scan/np.max(im.ct_scan)).unsqueeze(0),
                     torch.tensor(v)
                 ))
 
