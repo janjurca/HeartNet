@@ -128,16 +128,16 @@ class GomezT1(Dataset):
 
 
 class GomezT1Rotation(Dataset):
-    def __init__(self, root, portion=0.75, resolution=None, augment=0, planes=["sa", "ch4", "ch2"], normalize=True):
+    def __init__(self, root, portion=0.75, resolution=None, augment=0, planes=["sa", "ch4", "ch2"], noise=True):
         self.data = []
         self.images = []
         self.gtsas = []
         self.gtch4s = []
         self.gtch2s = []
-        self.normalize = normalize
         self.planes = planes
         self.augment = augment
         self.resolution = resolution
+
         files = glob.glob(f"{root}/original/*/image.mhd")
         self.file_ids = []
         if portion > 0:
@@ -198,18 +198,25 @@ class GomezT1Rotation(Dataset):
         for i, (image, gtsa, gtch4, gtch2) in enumerate(zip(self.images, self.gtsas, self.gtch4s, self.gtch2s)):
             print(f"[{i}/{len(self.images)}]")
             for _ in range(self.augment):
-                theta_x = float(random.randrange(-2000, 2000))/100
-                theta_y = float(random.randrange(-2000, 2000))/100
-                theta_z = float(random.randrange(-2000, 2000))/100
+                theta_x = float(random.randrange(-4500, 4500))/100
+                theta_y = float(random.randrange(-4500, 4500))/100
+                theta_z = float(random.randrange(-4500, 4500))/100
 
                 translate_x = float(random.randrange(-2000, 2000))/100
                 translate_y = float(random.randrange(-2000, 2000))/100
                 translate_z = float(random.randrange(-2000, 2000))/100
 
+                noiseStrength = float(random.randrange(0, 90))/100
+                noise = np.random.normal(np.mean(image.ct_scan), (np.mean(image.ct_scan)/2)*noiseStrength, image.ct_scan.shape)
+
                 im = self.duplicateImage(image)
                 new_gtsa = self.duplicateImage(gtsa)
                 new_gtch4 = self.duplicateImage(gtch4)
                 new_gtch2 = self.duplicateImage(gtch2)
+
+                new_gtsa.setData(new_gtsa.ct_scan + noise)
+                new_gtch4.setData(new_gtch4.ct_scan + noise)
+                new_gtch2.setData(new_gtch2.ct_scan + noise)
 
                 im.translate(translate_x, translate_y, translate_z, reload=False, commit=False)
                 im.rotation3d(theta_x, theta_y, theta_z, reload=False, commit=True)
