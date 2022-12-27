@@ -61,9 +61,9 @@ class ItkImage:
 
     def load(self) -> None:
         self.image = sitk.ReadImage(self.filename, imageIO="MetaImageIO")  # TODO generalize for other formats
+        self.image.SetSpacing([1, 1, 1])
         if self.resolution:
             self.resize(self.resolution)
-        self.image.SetSpacing([1, 1, 1])
         self.heartBox = None
         self.transforms = []
         self.refresh()
@@ -147,7 +147,7 @@ class ItkImage:
         self.heartBox["front"] = front
         self.heartBox["back"] = back
 
-    def points(self, threshold=0.8):
+    def points(self, threshold=0.5):
         print(np.max(self.ct_scan))
         return np.argwhere(self.ct_scan > threshold)
 

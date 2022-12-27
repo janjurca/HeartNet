@@ -2,7 +2,7 @@ import SimpleITK as sitk
 import numpy as np
 import matplotlib.lines as mlines
 from sympy import Point3D, Point2D
-from gl import glvars, gllines
+from heartRotation.annotator.gl import glvars, gllines
 
 
 class ItkImage:
@@ -59,6 +59,10 @@ class ItkImage:
         interpolator = sitk.sitkBSpline
         default_value = 0
         return sitk.Resample(self.image, reference_image, transform,   interpolator, default_value, useNearestNeighborExtrapolator=True)
+
+    def points(self, threshold=0.5):
+        print(np.max(self.ct_scan))
+        return np.argwhere(self.ct_scan > threshold)
 
     def get_center(self):
         """

@@ -35,7 +35,7 @@ for i, ((image, Rotsa, Rotch4, Rotch2), (_, Rotsa_solo, _, _), (_, _, Rotch4_sol
     gtsa = gtsa.clone()
     gtch4 = gtch4.clone()
     gtch2 = gtch2.clone()
-
+    print("Proccesing file:", image.filename)
     original = ItkImage(image.filename)
     Rotsa.resize(original.res())
     Rotch4.resize(original.res())

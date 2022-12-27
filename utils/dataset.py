@@ -15,6 +15,8 @@ import math
 from scipy.interpolate import interp1d
 import SimpleITK as sitk
 import random
+import torch
+import torch.nn.functional as F
 
 
 class GomezT1(Dataset):
@@ -126,12 +128,13 @@ class GomezT1(Dataset):
 
 
 class GomezT1Rotation(Dataset):
-    def __init__(self, root, portion=0.75, resolution=None, augment=0, planes=["sa", "ch4", "ch2"]):
+    def __init__(self, root, portion=0.75, resolution=None, augment=0, planes=["sa", "ch4", "ch2"], normalize=True):
         self.data = []
         self.images = []
         self.gtsas = []
         self.gtch4s = []
         self.gtch2s = []
+        self.normalize = normalize
         self.planes = planes
         self.augment = augment
         self.resolution = resolution
@@ -162,7 +165,7 @@ class GomezT1Rotation(Dataset):
 
             self.data.append(
                 (
-                    torch.tensor([image.ct_scan]),
+                    torch.tensor([F.normalize(torch.tensor(image.ct_scan)).tolist()]),
                     torch.tensor(v)
                 )
             )
@@ -228,7 +231,7 @@ class GomezT1Rotation(Dataset):
                     v.append(torch.tensor(gtch2.ct_scan, dtype=torch.float32).tolist())
 
                 augmented.append((
-                    torch.tensor([im.ct_scan]),
+                    torch.tensor([F.normalize(torch.tensor(im.ct_scan)).tolist()]),
                     torch.tensor(v)
                 ))
 

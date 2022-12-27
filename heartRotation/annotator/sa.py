@@ -14,13 +14,13 @@ from sympy.solvers import solve
 from sympy import Symbol
 from sympy import Point3D, Plane, Point2D
 from sympy.geometry import Line3D, Line2D
-from utils import PlotPlaneSelect, ItkImage
-from gl import glvars, gllines
+from heartRotation.annotator.utils import PlotPlaneSelect, ItkImage
+from heartRotation.annotator.gl import glvars, gllines
 from matplotlib.widgets import Slider, Button, RadioButtons
 from sympy import symbols
 from mpl_toolkits.mplot3d import Axes3D
 import pickle
-
+from utils.compute_plane import rotateImage
 from sympy.plotting import plot3d
 from sympy.plotting import plot3d_parametric_line, plot3d_parametric_surface
 
@@ -163,9 +163,9 @@ for f in glob.glob(args.input):
     plotHLA = PlotPlaneSelect(imageHLA, HLAax, onSetPlane=onHLASelected)
     plotVLA = PlotPlaneSelect(ItkImage(f, name="VLA"), VLAax, onSetPlane=onVLASelected)
     plotSA = PlotPlaneSelect(ItkImage(f, name="SAView"), SAview)
-    plotGT = PlotPlaneSelect(ItkImage(f, name="GTSA"), GTax)
     plotCH4 = PlotPlaneSelect(ItkImage(f, name="CH4"), CH4ax, onSetPlane=on4CHSelected)
     plotCH2 = PlotPlaneSelect(ItkImage(f, name="CH2"), CH2ax)
+    plotGT = PlotPlaneSelect(ItkImage(f, name="GTSA"), GTax)
     plotGTCH4 = PlotPlaneSelect(ItkImage(f, name="GTCH4"), GTCH4ax)
     plotGTCH2 = PlotPlaneSelect(ItkImage(f, name="GTCH2"), GTCH2ax)
 
@@ -187,9 +187,14 @@ for f in glob.glob(args.input):
         z = plotSA.index
         width, height, depth = plotSA.image.resolution()
         gtSA = generateDistanceMap(z, (depth, height, width))
+
         plotGT.image.setData(gtSA)
         plotGT.image.applyTransform(sitk.CompositeTransform(plotSA.image.transforms).GetInverse())
         plotGT.image.refresh()
+
+        gtSA, indexgtSA = rotateImage(ItkImage(f, name="GTSA"), plotGT.image)
+        plotGT.image = gtSA
+        plotGT.setIndex(indexgtSA)
         plotGT.redraw()
 
         # GT4CH
