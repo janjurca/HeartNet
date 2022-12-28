@@ -148,7 +148,7 @@ class ItkImage:
         self.heartBox["back"] = back
 
     def points(self, threshold=0.5):
-        print(np.max(self.ct_scan))
+        # print(np.max(self.ct_scan))
         return np.argwhere(self.ct_scan > threshold)
 
     def res(self):

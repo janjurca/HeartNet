@@ -22,7 +22,7 @@ parser.add_argument('--checkpoint-ch4', required=True, type=str, help='model fil
 parser.add_argument('--checkpoint-ch2', required=True, type=str, help='model file')
 args = parser.parse_args()
 
-inferenceSet = GomezT1Rotation(root=args.dataset, portion=0.2, resolution=[128, 128, 128])
+inferenceSet = GomezT1Rotation(root=args.dataset, portion=-0.2, resolution=[128, 128, 128])
 
 for i, ((image, Rotsa, Rotch4, Rotch2), (_, Rotsa_solo, _, _), (_, _, Rotch4_solo, _), (_, _, _, Rotch2_solo)) in enumerate(zip(
     inference.inference(inferenceSet, args.checkpoint),

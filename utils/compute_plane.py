@@ -27,6 +27,15 @@ def planeAngles(plane):
     return xangle, yangle, zangle
 
 
+def comparePlanes(mask1, mask2):
+    plane1, points = fitPlane(mask1)
+    plane2, points = fitPlane(mask2)
+
+    angle = plane1.normal.angle_between(plane2.normal)
+    angle = math.degrees(angle)
+    return angle
+
+
 def rotateImage(image, mask):
     plane, points = fitPlane(mask)
     X_ANGLE, Y_ANGLE, Z_ANGLE = planeAngles(plane)

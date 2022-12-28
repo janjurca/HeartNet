@@ -29,7 +29,7 @@ cp -r /storage/brno2/home/xjurca08/storage/brno2/home/xjurca08/HeartNet/Gomez_T1
 python3.9 detection.py --dataset /storage/brno2/home/xjurca08/storage/brno2/home/xjurca08/HeartNet/Gomez_T1/ --batchSz 10
 
 
-python3.9 rotation.py --dataset $SCRATCHDIR/Gomez_T1/ --batchSz 10 --planes sa --augment 20
-python3.9 rotation.py --dataset $SCRATCHDIR/Gomez_T1/ --batchSz 10 --planes ch4 --augment 20
-python3.9 rotation.py --dataset $SCRATCHDIR/Gomez_T1/ --batchSz 10 --planes ch2 --augment 20
-python3.9 rotation.py --dataset $SCRATCHDIR/Gomez_T1/ --batchSz 10 --planes sa,ch4,ch2 --augment 20
+python3.9 rotation.py --dataset $SCRATCHDIR/Gomez_T1/ --batchSz 10 --planes sa --augment 30
+python3.9 rotation.py --dataset $SCRATCHDIR/Gomez_T1/ --batchSz 10 --planes ch4 --augment 30
+python3.9 rotation.py --dataset $SCRATCHDIR/Gomez_T1/ --batchSz 10 --planes ch2 --augment 30
+python3.9 rotation.py --dataset $SCRATCHDIR/Gomez_T1/ --batchSz 10 --planes sa,ch4,ch2 --augment 30
