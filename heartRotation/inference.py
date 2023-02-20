@@ -1,32 +1,8 @@
 #!/usr/bin/env python3
 
-import time
-import argparse
 import torch
-
 import numpy as np
-import torch.nn as nn
-import torch.nn.init as init
-import torch.optim as optim
-
-import torch.nn.functional as F
-from torch.autograd import Variable
-from torch.utils.data import DataLoader
-
-import os
-import sys
-import math
-
-import shutil
-
-import setproctitle
-
-from nets.vnet import VNet, VNetRegression
-from utils.dataset import GomezT1Rotation
-from functools import reduce
-import operator
-import SimpleITK as sitk
-import matplotlib.pyplot as plt
+from nets.vnet import VNetRegression
 
 
 def inference(dataset, checkpoint, planes=["sa", "ch4", "ch2"]):

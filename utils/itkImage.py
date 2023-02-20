@@ -60,7 +60,9 @@ class ItkImage:
         self.resolution = resolution
 
     def load(self) -> None:
+
         self.image = sitk.ReadImage(self.filename, imageIO="MetaImageIO")  # TODO generalize for other formats
+
         self.image.SetSpacing([1, 1, 1])
         if self.resolution:
             self.resize(self.resolution)
@@ -148,7 +150,7 @@ class ItkImage:
         self.heartBox["back"] = back
 
     def points(self, threshold=0.5):
-        # print(np.max(self.ct_scan))
+        print(np.max(self.ct_scan))
         return np.argwhere(self.ct_scan > threshold)
 
     def res(self):

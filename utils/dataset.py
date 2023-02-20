@@ -117,7 +117,7 @@ class GomezT1(Dataset):
                             continue
                         translations.append((x_move, y_move, z_move))
 
-            #print("Translations len:", len(translations))
+            # print("Translations len:", len(translations))
             for translation in translations:
                 im = self.duplicateImage(image)
 
@@ -244,3 +244,27 @@ class GomezT1Rotation(Dataset):
                 ))
 
         return augmented
+
+
+class GomezT1RotationInference(GomezT1Rotation):
+    def __init__(self, root, resolution=None, augment=0, planes=["sa", "ch4", "ch2"], noise=True):
+        self.data = []
+        self.images = []
+        self.resolution = resolution
+
+        files = glob.glob(f"{root}/original/*/image.mhd")
+        for file in files:
+            print(file)
+            image = ItkImage(file, resolution=resolution)
+
+            self.data.append(
+                (
+                    torch.tensor(image.ct_scan/np.max(image.ct_scan)).unsqueeze(0),
+                )
+            )
+            self.images.append(image)
+
+        print("Dataset len: ", len(self.data))
+
+    def get(self, index):
+        return self.data[index], self.images[index]

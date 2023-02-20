@@ -4,7 +4,11 @@ from utils.compute_plane import rotateImage
 from utils.itkImage import ItkImage
 from utils.volumeImage import VolumeImage
 import matplotlib.pylab as plt
-from utils.dataset import GomezT1Rotation
+from utils.dataset import GomezT1RotationInference
+from nets.vnet import VNetRegression
+import torch
+import numpy as np
+import SimpleITK as sitk
 
 
 class GL:
@@ -14,26 +18,74 @@ class GL:
 gl = GL()
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', default='./Gomez_T1', type=str, help='Dataset Path')
+parser.add_argument('--dataset', type=str, help='image Path')
 parser.add_argument('--checkpoint', required=True, type=str, help='model file')
 parser.add_argument('--checkpoint-sa', required=True, type=str, help='model file')
 parser.add_argument('--checkpoint-ch4', required=True, type=str, help='model file')
 parser.add_argument('--checkpoint-ch2', required=True, type=str, help='model file')
 args = parser.parse_args()
 
-inferenceSet = GomezT1Rotation(root=args.dataset, portion=1, resolution=[128, 128, 128])
+inferenceSet = GomezT1RotationInference(root=args.dataset, resolution=[128, 128, 128])
+
+
+def inference(dataset, checkpoint, planes=["sa", "ch4", "ch2"]):
+    cuda = False
+    model = VNetRegression(elu=False, nll=True, outCH=len(planes))
+
+    print("=> loading checkpoint '{}'".format(checkpoint))
+    checkpoint = torch.load(checkpoint, map_location=torch.device('cpu'))
+    model.load_state_dict(checkpoint['state_dict'])
+
+    if cuda:
+        model = model.cuda()
+
+    kwargs = {'num_workers': 1, 'pin_memory': True} if cuda else {}
+
+    model.eval()
+    for i in range(len(dataset)):
+        (data,), image = dataset.get(i)
+        gtsa = image.clone()
+        gtch4 = image.clone()
+        gtch2 = image.clone()
+        if cuda:
+            data = data.cuda()
+        print(data.shape)
+        with torch.no_grad():
+            data = torch.tensor([data.tolist()])
+            output = model(data)
+
+        output = output.view([len(planes), 128, 128, 128])
+        output = output.cpu()
+        output = output.detach().numpy()
+        if len(planes) == 1:
+            if "sa" in planes:
+                sa = np.array(output[0], dtype=float)
+                gtsa.setData(sa)
+            if "ch4" in planes:
+                ch4 = np.array(output[0], dtype=float)
+                gtch4.setData(ch4)
+            if "ch2" in planes:
+                ch2 = np.array(output[0], dtype=float)
+                gtch2.setData(ch2)
+        elif len(planes) == 3:
+            sa = np.array(output[0], dtype=float)
+            ch4 = np.array(output[1], dtype=float)
+            ch2 = np.array(output[2], dtype=float)
+            gtsa.setData(sa)
+            gtch4.setData(ch4)
+            gtch2.setData(ch2)
+        else:
+            raise Exception("Planes are badly defined.")
+
+        yield image, gtsa, gtch4, gtch2
+
 
 for i, ((image, Rotsa, Rotch4, Rotch2), (_, Rotsa_solo, _, _), (_, _, Rotch4_solo, _), (_, _, _, Rotch2_solo)) in enumerate(zip(
-    inference.inference(inferenceSet, args.checkpoint),
-    inference.inference(inferenceSet, args.checkpoint_sa, ["sa"]),
-    inference.inference(inferenceSet, args.checkpoint_ch4, ["ch4"]),
-    inference.inference(inferenceSet, args.checkpoint_ch2, ["ch2"]),
+    inference(inferenceSet, args.checkpoint),
+    inference(inferenceSet, args.checkpoint_sa, ["sa"]),
+    inference(inferenceSet, args.checkpoint_ch4, ["ch4"]),
+    inference(inferenceSet, args.checkpoint_ch2, ["ch2"]),
 )):
-    (_, _), _, gtsa, gtch4, gtch2 = inferenceSet.get(i)
-
-    gtsa = gtsa.clone()
-    gtch4 = gtch4.clone()
-    gtch2 = gtch2.clone()
     print("Proccesing file:", image.filename)
     original = ItkImage(image.filename)
     Rotsa.resize(original.res())
@@ -42,10 +94,6 @@ for i, ((image, Rotsa, Rotch4, Rotch2), (_, Rotsa_solo, _, _), (_, _, Rotch4_sol
     Rotsa_solo.resize(original.res())
     Rotch4_solo.resize(original.res())
     Rotch2_solo.resize(original.res())
-
-    gtsa.resize(original.res())
-    gtch4.resize(original.res())
-    gtch2.resize(original.res())
 
     print("Proccesing multishot results")
     print("CH4")
@@ -63,15 +111,7 @@ for i, ((image, Rotsa, Rotch4, Rotch2), (_, Rotsa_solo, _, _), (_, _, Rotch4_sol
     print("SA")
     imageSA_solo, indexSA_solo = rotateImage(ItkImage(original.filename), Rotsa_solo)
 
-    print("Proccesing GTS")
-    print("CH4")
-    imageCH4_gt, indexCH4_gt = rotateImage(ItkImage(original.filename), gtch4)
-    print("CH2")
-    imageCH2_gt, indexCH2_gt = rotateImage(ItkImage(original.filename), gtch2)
-    print("SA")
-    imageSA_gt, indexSA_gt = rotateImage(ItkImage(original.filename), gtsa)
-
-    fig, ((AxSA_gt, AxCH4_gt, AxCH2_gt), (AxSA, AxCH4,  AxCH2), (AxSA_solo, AxCH4_solo, AxCH2_solo)) = plt.subplots(3, 3)
+    fig, ((AxSA, AxCH4,  AxCH2), (AxSA_solo, AxCH4_solo, AxCH2_solo)) = plt.subplots(2, 3)
 
     def enter_axes(event):
         gl.selected_axis = event.inaxes
@@ -92,13 +132,6 @@ for i, ((image, Rotsa, Rotch4, Rotch2), (_, Rotsa_solo, _, _), (_, _, Rotch4_sol
     plotCH4_solo.setIndex(indexCH4_solo)
     plotCH2_solo = VolumeImage(imageCH2_solo, AxCH2_solo, fig, "CH2_solo", gl)
     plotCH2_solo.setIndex(indexCH2_solo)
-
-    plotSA_gt = VolumeImage(imageSA_gt, AxSA_gt, fig, "SA_gt", gl)
-    plotSA_gt.setIndex(indexSA_gt)
-    plotCH4_gt = VolumeImage(imageCH4_gt, AxCH4_gt, fig, "CH4_gt", gl)
-    plotCH4_gt.setIndex(indexCH4_gt)
-    plotCH2_gt = VolumeImage(imageCH2_gt, AxCH2_gt, fig, "CH2_gt", gl)
-    plotCH2_gt.setIndex(indexCH2_solo)
 
     fig, (axx) = plt.subplots(1, 1)
     plotSA = VolumeImage(imageSA, axx, fig, "SA MultiPlane", gl)
@@ -129,20 +162,5 @@ for i, ((image, Rotsa, Rotch4, Rotch2), (_, Rotsa_solo, _, _), (_, _, Rotch4_sol
     plotCH2_solo = VolumeImage(imageCH2_solo, axx, fig, "CH2 SinglePlane", gl)
     plotCH2_solo.setIndex(indexCH2_solo)
     plt.savefig("ch2_SinglePlane.jpg")
-
-    fig, (axx) = plt.subplots(1, 1)
-    plotSA_gt = VolumeImage(imageSA_gt, axx, fig, "SA Manual Ground truth", gl)
-    plotSA_gt.setIndex(indexSA_gt)
-    plt.savefig("sa_manual.jpg")
-
-    fig, (axx) = plt.subplots(1, 1)
-    plotCH4_gt = VolumeImage(imageCH4_gt, axx, fig, "CH4 Manual Ground truth", gl)
-    plotCH4_gt.setIndex(indexCH4_gt)
-    plt.savefig("ch4_manual.jpg")
-
-    fig, (axx) = plt.subplots(1, 1)
-    plotCH2_gt = VolumeImage(imageCH2_gt, axx, fig, "CH2 Manual Ground truth", gl)
-    plotCH2_gt.setIndex(indexCH2_solo)
-    plt.savefig("ch2_manual.jpg")
 
     plt.show()

@@ -30,7 +30,7 @@ parser.add_argument('--checkpoint-ch4', required=True, type=str, help='model fil
 parser.add_argument('--checkpoint-ch2', required=True, type=str, help='model file')
 args = parser.parse_args()
 
-inferenceSet = GomezT1Rotation(root=args.dataset, portion=1, resolution=[128, 128, 128])
+inferenceSet = GomezT1Rotation(root=args.dataset, portion=-0.25, resolution=[128, 128, 128])
 
 angle_results = []
 
@@ -77,4 +77,11 @@ for i, ((image, Rotsa, Rotch4, Rotch2), (_, Rotsa_solo, _, _), (_, _, Rotch4_sol
 
 
 print(angle_results)
-print(np.mean(angle_results, axis=0))
+
+print("Results:")
+res = np.mean(angle_results, axis=0)
+print("Plane\t Multishot\t Solo")
+print(f"CH4 \t {res[3]:.4f} \t  {res[0]:.4f}")
+print(f"CH2 \t {res[4]:.4f} \t  {res[1]:.4f}")
+print(f"SA \t {res[5]:.4f} \t  {res[2]:.4f}")
+print()
